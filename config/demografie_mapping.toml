@@ -1,0 +1,43 @@
+# Demografie indicator -> report theme(s) and the RIVM rule it is closest to.
+# STATUS: PROPOSED (Oct 2026). The beweegvriendelijke-omgeving sub-scores are
+# composite indices (0-100) from sportenbewegenincijfers.nl; they are
+# context, NOT a test of the RIVM distance rules (see design D6).
+# Indicators not listed here go to the Demografie / context section only.
+
+version = "2026-10-21-proposed"
+
+[indicator."Sport-accommodaties"]
+themes = ["Sporten"]
+rules = ["R6"]
+
+[indicator."Sport- en speelplekken"]
+themes = ["Sporten", "Formeel spelen"]
+rules = ["R2", "R4"]
+
+[indicator."Recreatief groen en blauw"]
+themes = ["Informeel spelen", "Uitstraling"]
+rules = ["R3"]
+
+[indicator."Nabijheid van voorzieningen"]
+themes = ["Actieve mobiliteit"]
+rules = ["R5"]
+
+[indicator."Sporters"]
+themes = ["Sporten"]
+rules = []
+
+[indicator."Voldoet aan de beweegrichtlijnen"]
+themes = []
+rules = []
+
+[indicator."Overgewicht"]
+themes = []
+rules = []
+
+[indicator."Beweegvriendelijke omgeving"]
+themes = []
+rules = []
+
+[indicator."Totaal"]
+themes = []
+rules = []

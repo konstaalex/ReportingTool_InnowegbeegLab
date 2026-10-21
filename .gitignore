@@ -1,0 +1,25 @@
+# ---- Research data: NEVER commit (NFR7) -------------------------------------
+# Ingestion output and workspaces contain resident/expert quotes and scores
+# lifted from InnoBeweegLab data (incl. the confidential Oss/Euterpepark case).
+store.json
+*.json
+!package.json
+workspace/
+workspace*/
+# raw source files, should one ever be dropped in here by accident
+*.xlsx
+*.xls
+*.docx
+*.pdf
+*.png
+!docs/**/*.png
+
+# ---- Python / tooling --------------------------------------------------------
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+
+# ---- macOS -------------------------------------------------------------------
+.DS_Store

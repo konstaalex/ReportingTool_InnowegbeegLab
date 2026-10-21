@@ -1,0 +1,15 @@
+Onderdeel: resultaten voor het thema "$section" in $case_label.
+Stap 2 van 2: verbind de perspectieven.
+
+Hieronder staan de bevindingen uit stap 1 (al gecontroleerd op bron) en de vergelijkende bewijsstukken. Schrijf:
+- 1 tot 3 interpretaties: waar zijn experts, bewoners en data het eens, waar niet?
+- precies 1 conclusie: de kernboodschap van dit thema in één zin.
+Verwijs alleen naar bewijsstuk-id's die hieronder staan.
+
+Bevindingen uit stap 1:
+$findings
+
+Vergelijkende bewijsstukken:
+$evidence
+
+JSON-schema: {"claims": [{"text": "...", "type": "interpretatie|conclusie", "evidence_ids": ["..."]}]}

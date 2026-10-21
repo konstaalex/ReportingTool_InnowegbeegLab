@@ -1,0 +1,15 @@
+Onderdeel: resultaten voor het thema "$section" in $case_label.
+
+Schrijf 6 tot 10 beweringen, verdeeld over 2 of 3 alinea's (veld "paragraph": 1, 2, 3):
+- alinea 1: wat de experts zagen;
+- alinea 2: wat bewoners aangeven (cijfers en enkele open antwoorden);
+- alinea 3: hoe de perspectieven zich tot elkaar verhouden, eventueel met demografische data, en sluit af met precies één conclusie.
+Geen aanbevelingen.
+
+Niet beschikbaar voor dit onderdeel (noem deze niet als feit):
+$unavailable
+
+Bewijsstukken:
+$evidence
+
+JSON-schema: {"claims": [{"text": "...", "type": "bevinding|interpretatie|conclusie", "evidence_ids": ["..."], "paragraph": 1}]}

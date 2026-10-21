@@ -1,0 +1,117 @@
+# Writing rules the report must follow, transcribed from the two documents
+# InnoBeweegLab supplied (Oct 2026). Every rule keeps its source + locator so
+# a style flag in the review UI can show *which* house rule it comes from.
+#
+# check.type:
+#   prompt_only      - instructed in the drafting prompt, not machine-checked
+#   max_words        - sentence length
+#   phrase_list      - flag listed words/phrases (whole-word, case-insensitive)
+#   passive_voice    - heuristic: form of 'worden' + past participle
+#   repeated_openers - section-level: same first two words in >= N claims
+#
+# Scope note (open question 4): the Schrijfwijzer is written for web/social
+# channels. Channel-specific advice (emoji, LinkedIn timing, addressing the
+# reader with "je", hooks, BYAF) is deliberately NOT applied to reports for
+# municipalities until InnoBeweegLab confirms otherwise.
+
+version = "2026-10-21"
+audience = "beleidsmakers en professionals bij de gemeente"
+language = "nl"
+level = "B1"
+
+[sources]
+TR = { file = "Ten textual rules.docx", title = "Ten textual rules" }
+SW = { file = "Schrijfwijzer_Communicatie MKP.docx", title = "Interne schrijfwijzer (M. Kling-Pennings, nov. 2025)" }
+
+[[rule]]
+id = "TR1"
+source = "TR"
+locator = "regel 1"
+text = "De tekst is feitelijk juist: alle uitspraken zijn gebaseerd op betrouwbare data of bronnen."
+check = { type = "prompt_only" }   # enforced by the grounding checks, not by style lint
+
+[[rule]]
+id = "TR2"
+source = "TR"
+locator = "regel 2"
+text = "De kernboodschap is in één zin samen te vatten."
+check = { type = "prompt_only" }
+
+[[rule]]
+id = "TR3"
+source = "TR"
+locator = "regel 3"
+text = "Taalniveau en woordkeus passen bij beleidsmakers en professionals; vermijd jargon of leg het uit."
+check = { type = "prompt_only" }
+
+[[rule]]
+id = "TR6"
+source = "TR"
+locator = "regel 6"
+text = "Logische opbouw; elke alinea gaat over één onderwerp."
+check = { type = "prompt_only" }
+
+[[rule]]
+id = "TR7"
+source = "TR"
+locator = "regel 7"
+text = "Schrijf actief: actieve zinnen hebben de voorkeur boven lijdende vorm."
+check = { type = "passive_voice" }
+
+[[rule]]
+id = "TR8"
+source = "TR"
+locator = "regel 8"
+text = "Concreet en specifiek: gebruik voorbeelden, cijfers en feiten."
+check = { type = "prompt_only" }
+
+[[rule]]
+id = "TR9"
+source = "TR"
+locator = "regel 9"
+text = "Vermijd onnodige herhaling van woorden, argumenten en zinsbouw."
+check = { type = "repeated_openers", min_repeats = 3 }
+
+[[rule]]
+id = "SW2"
+source = "SW"
+locator = "§2 Schrijf op B1-niveau"
+text = "Vermijd formele taal zoals 'indien', 'dient te worden', 'reduceren'."
+check = { type = "phrase_list", phrases = ["indien", "dient te worden", "dienen te worden", "reduceren"] }
+
+[[rule]]
+id = "SW4.1a"
+source = "SW"
+locator = "§4.1 Actieve stijl"
+text = "Vermijd voorzetseluitdrukkingen; vervang ze door één voorzetsel."
+check = { type = "phrase_list", phrases = ["naar aanleiding van", "met betrekking tot", "in verband met", "ten aanzien van", "door middel van"] }
+
+[[rule]]
+id = "SW4.1b"
+source = "SW"
+locator = "§4.1 Actieve stijl"
+text = "Vermijd overbodige hulpwerkwoorden zoals zullen, kunnen, moeten."
+check = { type = "phrase_list", phrases = ["zullen", "zal", "zou", "zouden"] }
+# 'kunnen/moeten' are left out of the automatic list on purpose: in a report
+# they often carry meaning ('bewoners kunnen er niet sporten'). Prompt covers them.
+
+[[rule]]
+id = "SW4.1c"
+source = "SW"
+locator = "§4.1 Actieve stijl"
+text = "Vermijd de lijdende vorm ('Het project wordt uitgevoerd door...')."
+check = { type = "passive_voice" }
+
+[[rule]]
+id = "SW4.2"
+source = "SW"
+locator = "§4.2 Houd je tekst levendig"
+text = "Houd zinnen kort: maximaal 20 woorden."
+check = { type = "max_words", max = 20 }
+
+[[rule]]
+id = "SW4.3"
+source = "SW"
+locator = "§4.3 Vermijd lege en precieze woorden"
+text = "Lege woorden zijn meestal overbodig."
+check = { type = "phrase_list", phrases = ["over het algemeen", "een en ander", "aspect", "aspecten", "globaal", "met name", "dimensie", "c.q."] }

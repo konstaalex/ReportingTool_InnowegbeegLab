@@ -1,0 +1,68 @@
+# Model registry (UC5). Pipelines refer to models only by these ids.
+# Local candidates are sized for the 16 GB / CPU-only target laptop (NFR5);
+# ram_gb_estimate = rough resident memory at Q4_K_M incl. an 8k context.
+# Check what is downloaded with `python -m llm.cli check` (or `ollama list`).
+
+[hardware]
+target_ram_gb = 16
+max_model_share_of_ram = 0.6     # leave room for OS + Streamlit + Python
+
+[model.fake]
+provider = "fake"
+model = "fake"
+location = "local"
+capabilities = { structured_output = true, context_tokens = 100000 }
+# Deterministic offline stand-in for tests and UI demos. NOT research output.
+
+# Download sizes: Ollama library, Sept 2026 (needtoknowit.com.au model table).
+# Treat download size as a floor: the context window and runtime add memory.
+# After loading, `ollama ps` shows what a model really uses on your machine.
+
+[model.local_qwen7b]             # primary candidate: good at JSON + multilingual (Dutch)
+provider = "ollama"
+model = "qwen2.5:7b"             # 4.7 GB download
+location = "local"
+base_url = "http://localhost:11434"
+num_ctx = 8192
+ram_gb_estimate = 6.5
+capabilities = { structured_output = true, context_tokens = 32768, reliable_token_usage = true }
+
+[model.local_qwen3_8b]           # newer generation; a "thinking" model -> thinking switched off for drafting
+provider = "ollama"
+model = "qwen3:8b"               # 5.2 GB download
+location = "local"
+num_ctx = 8192
+think = false
+ram_gb_estimate = 7.0
+capabilities = { structured_output = true, context_tokens = 32768, reliable_token_usage = true }
+
+[model.local_llama8b]            # widely used reference model
+provider = "ollama"
+model = "llama3.1:8b"            # 4.9 GB download
+location = "local"
+num_ctx = 8192
+ram_gb_estimate = 7.0
+capabilities = { structured_output = true, context_tokens = 131072, reliable_token_usage = true }
+
+[model.local_gemma12b]           # bigger: Mac comparison only, too large for the 16 GB target
+provider = "ollama"
+model = "gemma3:12b"             # 8.1 GB download
+location = "local"
+num_ctx = 8192
+ram_gb_estimate = 10.5           # exceeds 60% of 16 GB -> validate_model_config warns
+capabilities = { structured_output = true, context_tokens = 131072, reliable_token_usage = true }
+
+# Hosted comparison (experiment E6). Disabled by default: needs an API key in
+# the named environment variable AND stakeholder permission for the data
+# classes it may receive. Resident free text is blocked unless the experiment
+# sets allow_resident_text_to_hosted = true (logged override, FR15).
+[model.hosted_mistral_small]
+provider = "openai_compatible"
+model = "mistral-small-latest"
+location = "hosted"
+base_url = "https://api.mistral.ai/v1"
+api_key_env = "MISTRAL_API_KEY"
+data_residency = "EU"
+eur_per_1k_input = 0.0           # TODO: fill in from the provider's current price list before E6
+eur_per_1k_output = 0.0
+capabilities = { structured_output = true, context_tokens = 32000, reliable_token_usage = true }

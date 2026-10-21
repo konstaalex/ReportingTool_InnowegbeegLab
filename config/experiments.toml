@@ -1,0 +1,45 @@
+# Experiment definitions (brief section 16). Keep the matrix small.
+# Freeze this file + prompts/<version> during a comparison; the runner
+# records their fingerprints in every run record anyway.
+#
+# "retrieval" here = how evidence is selected before drafting:
+#   all       -> every evidence item of the theme (no retrieval)
+#   top_k:N   -> N most salient items (deterministic salience ranking)
+# BM25 / vector retrieval are later conditions once a need is shown.
+
+[defaults]
+cases = ["passewaaij-tiel"]
+sections = ["Sporten", "Actieve mobiliteit", "Formeel spelen", "Informeel spelen", "Ontmoeten", "Uitstraling"]
+model = "local_qwen7b"
+prompt_version = "v1"
+temperature = 0.2
+seeds = [42, 43, 44]          # repeats: LLM output is stochastic (arXiv:2509.24086)
+
+[experiment.E0]
+description = "Deterministic template baseline (no model)"
+pipeline = "template"
+selection = "all"
+seeds = [0]
+
+[experiment.E1]
+description = "Naive single prompt, all evidence, local model"
+pipeline = "naive"
+selection = "all"
+
+[experiment.E2]
+description = "Staged (findings per perspective + synthesis), all evidence, local model"
+pipeline = "staged"
+selection = "all"
+
+[experiment.E3]
+description = "Staged, top-25 salient evidence (selection as retrieval), local model"
+pipeline = "staged"
+selection = "top_k:25"
+
+[experiment.SMOKE]
+description = "Plumbing check with the fake provider - NOT research output"
+pipeline = "staged"
+selection = "all"
+model = "fake"
+seeds = [42]
+sections = ["Sporten"]

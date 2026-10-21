@@ -1,0 +1,249 @@
+# Buurtscan resident questionnaire -> report theme mapping.
+#
+# STATUS: PROPOSED by the prototype (Oct 2026), not yet confirmed by
+# InnoBeweegLab. This is an interpretation of the questionnaire, so it lives
+# here, visible and editable, rather than inside parser code (FR3).
+# Anything not matched below stays unmapped and is listed by
+# `python -m ingestion.cli ingest-buurtscan` as needing manual mapping.
+#
+# Matching: `match` is a case-insensitive substring of the question text
+# (the neighbourhood name is replaced by {buurt}); `item` additionally
+# matches the matrix item for the "Hoe belangrijk ..." question.
+# `label` is the short Dutch wording used in evidence statements.
+# `theme = ""` means: general / cross-cutting (not one theme).
+
+version = "2026-10-21-proposed"
+
+[[question]]
+id = "woonbuurt"
+match = "In welke buurt woont u"
+theme = ""
+label = "woonbuurt van de respondent"
+
+# --- "Hoe belangrijk zijn de volgende onderdelen" (matrix, Likert) ---------
+[[question]]
+id = "belang_wandelfiets"
+match = "Hoe belangrijk zijn de volgende onderdelen"
+item = "Wandel- en fietspaden"
+theme = "Actieve mobiliteit"
+label = "wandel- en fietspaden"
+
+[[question]]
+id = "belang_groen"
+match = "Hoe belangrijk zijn de volgende onderdelen"
+item = "Natuur/ groen voor recreatie"
+theme = "Uitstraling"   # consistent with theme_tagger.SURVEY_COLUMN_THEMES (Oss); OPEN QUESTION 1
+label = "natuur en groen voor recreatie"
+
+[[question]]
+id = "belang_ontmoeting"
+match = "Hoe belangrijk zijn de volgende onderdelen"
+item = "Ruimte voor ontmoeting"
+theme = "Ontmoeten"
+label = "ruimte voor ontmoeting"
+
+[[question]]
+id = "belang_sport"
+match = "Hoe belangrijk zijn de volgende onderdelen"
+item = "Openbare sport- en beweegvoorzieningen"
+theme = "Sporten"
+label = "openbare sport- en beweegvoorzieningen"
+
+[[question]]
+id = "belang_activiteiten"
+match = "Hoe belangrijk zijn de volgende onderdelen"
+item = "Georganiseerde activiteiten"
+theme = "Ontmoeten"
+label = "georganiseerde activiteiten"
+
+[[question]]
+id = "belang_spelen"
+match = "Hoe belangrijk zijn de volgende onderdelen"
+item = "Speelgelegenheid"
+theme = "Formeel spelen"
+label = "speelgelegenheid"
+
+# --- multi-select lists whose OPTIONS belong to different themes ------------
+[[question]]
+id = "mist"
+match = "Wat mist u in de openbare ruimte"
+theme = "*per_option"
+label = "wat bewoners missen in de openbare ruimte"
+verb = "mist"
+
+[[question]]
+id = "fijn"
+match = "Wat vindt u fijne dingen in de openbare ruimte"
+theme = "*per_option"
+label = "wat bewoners fijn vinden in de openbare ruimte"
+verb = "vindt fijn:"
+
+# --- Sporten -----------------------------------------------------------------
+[[question]]
+id = "sport_cijfer"
+match = "Welk cijfer geeft u het thema sporten"
+theme = "Sporten"
+label = "cijfer voor het thema sporten"
+theme_rating = true
+
+[[question]]
+id = "sport_leeftijd"
+match = "voor elke leeftijd genoeg sportplekken"
+theme = "Sporten"
+label = "genoeg sportplekken voor elke leeftijd"
+
+[[question]]
+id = "sport_kwaliteit"
+match = "kwaliteit van de sportplekken"
+theme = "Sporten"
+label = "kwaliteit van de sportplekken"
+
+[[question]]
+id = "sport_wens"
+match = "Wat voor sportvoorzieningen zou u graag zien"
+theme = "Sporten"
+label = "gewenste sportvoorzieningen"
+
+# --- Formeel spelen ("het thema spelen" = speeltuinen/speelplekken) ---------
+[[question]]
+id = "spelen_cijfer"
+match = "Welk cijfer geeft u het thema spelen"
+theme = "Formeel spelen"
+label = "cijfer voor het thema spelen"
+theme_rating = true
+
+[[question]]
+id = "spelen_kwaliteit"
+match = "kwaliteit van de speelplekken"
+theme = "Formeel spelen"
+label = "kwaliteit van de speelplekken"
+
+[[question]]
+id = "spelen_leeftijd"
+match = "voor elke leeftijd genoeg speelplekken"
+theme = "Formeel spelen"
+label = "genoeg speelplekken voor elke leeftijd"
+
+[[question]]
+id = "spelen_wens"
+match = "Wat voor speelvoorzieningen zou"
+theme = "Formeel spelen"
+label = "gewenste speelvoorzieningen"
+
+# --- Informeel spelen ---------------------------------------------------------
+[[question]]
+id = "informeel_ruimte"
+match = "voldoende ruimte voor informeel spelen"
+theme = "Informeel spelen"
+label = "voldoende ruimte voor informeel spelen"
+
+[[question]]
+id = "informeel_wens"
+match = "Wat voor informele speelvoorzieningen"
+theme = "Informeel spelen"
+label = "gewenste informele speelvoorzieningen"
+
+# --- Actieve mobiliteit -----------------------------------------------------
+[[question]]
+id = "mobiliteit_cijfer"
+match = "Welk cijfer geeft u het thema wandelen en fietsen"
+theme = "Actieve mobiliteit"
+label = "cijfer voor het thema wandelen en fietsen"
+theme_rating = true
+
+[[question]]
+id = "mobiliteit_rondje"
+match = "nodigt de buurt uit om een rondje te wandelen"
+theme = "Actieve mobiliteit"
+label = "hoe uitnodigend de buurt is voor een rondje wandelen"
+
+[[question]]
+id = "mobiliteit_stoepen"
+match = "kwaliteit van de wandelpaden en stoepen"
+theme = "Actieve mobiliteit"
+label = "kwaliteit van de wandelpaden en stoepen"
+
+[[question]]
+id = "mobiliteit_fietspaden"
+match = "kwaliteit van de fietspaden"
+theme = "Actieve mobiliteit"
+label = "kwaliteit van de fietspaden"
+
+[[question]]
+id = "mobiliteit_nodig"
+match = "nodig om er fijn doorheen te kunnen wandelen of fietsen"
+theme = "Actieve mobiliteit"
+label = "wat nodig is om fijn te wandelen of fietsen"
+
+# --- Ontmoeten ---------------------------------------------------------------
+[[question]]
+id = "ontmoeten_cijfer"
+match = "Welk cijfer geeft u het thema ontmoeten"
+theme = "Ontmoeten"
+label = "cijfer voor het thema ontmoeten"
+theme_rating = true
+
+[[question]]
+id = "ontmoeten_behoefte"
+match = "behoefte aan meer mogelijkheden om mensen te ontmoeten"
+theme = "Ontmoeten"
+label = "behoefte aan meer ontmoetingsmogelijkheden"
+
+[[question]]
+id = "ontmoeten_nodig"
+match = "nodig hebben om mensen buiten te kunnen ontmoeten"
+theme = "Ontmoeten"
+label = "wat nodig is om buiten te ontmoeten"
+
+# --- Uitstraling -------------------------------------------------------------
+[[question]]
+id = "uitstraling_cijfer"
+match = "Welk cijfer geeft u het thema uitstraling"
+theme = "Uitstraling"
+label = "cijfer voor het thema uitstraling"
+theme_rating = true
+
+[[question]]
+id = "uitstraling_nodig"
+match = "nodig hebben om een goede uitstraling"
+theme = "Uitstraling"
+label = "wat nodig is voor een goede uitstraling"
+
+# --- General -----------------------------------------------------------------
+[[question]]
+id = "algemeen_nodig"
+match = "nodig om buiten te kunnen sporten, spelen, bewegen en ontmoeten"
+theme = ""
+label = "wat de buurt nodig heeft om buiten te bewegen en ontmoeten"
+
+[[question]]
+id = "algemeen_opmerkingen"
+match = "overige opmerkingen"
+theme = ""
+label = "overige opmerkingen"
+
+# Option -> theme for the multi-select lists marked theme = "*per_option".
+# Matched on the start of the option label. Cross-cutting options map to "".
+[option_themes]
+"Functionele wandelpaden" = "Actieve mobiliteit"
+"Recreatieve wandelpaden" = "Actieve mobiliteit"
+"Fietspaden" = "Actieve mobiliteit"
+"Veilige oversteekplaatsen" = "Actieve mobiliteit"
+"Voldoende fietsenstallingen" = "Actieve mobiliteit"
+"Openbare sport- of beweegvoorzieningen" = "Sporten"
+"Speelvoorzieningen" = "Formeel spelen"
+"Ontmoetingsplekken" = "Ontmoeten"
+"Gras wat gebruikt kan worden" = "Informeel spelen"   # also Ontmoeten; OPEN QUESTION 1
+"Siergroen" = "Uitstraling"
+"Straatverlichting" = ""        # cross-cutting (safety); OPEN QUESTION 1
+"Sociale veiligheid" = ""       # cross-cutting; OPEN QUESTION 1
+"Anders, namelijk:" = ""
+
+# Theme rating question for each theme, used for expert-vs-resident comparison.
+# Informeel spelen has no 1-5 rating in this questionnaire.
+[theme_rating_question]
+"Sporten" = "sport_cijfer"
+"Formeel spelen" = "spelen_cijfer"
+"Actieve mobiliteit" = "mobiliteit_cijfer"
+"Ontmoeten" = "ontmoeten_cijfer"
+"Uitstraling" = "uitstraling_cijfer"

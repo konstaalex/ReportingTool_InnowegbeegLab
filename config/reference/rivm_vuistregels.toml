@@ -1,0 +1,79 @@
+# RIVM "Vuistregels Bewegen" (november 2025 edition, file dated 18-12-2025).
+# Transcribed from page 1 of the PDF; page 2 carries the explanatory text.
+# Each rule becomes a citable reference record (perspective = "reference").
+#
+# IMPORTANT (design decision D6): the Buurtscan data set contains no maps or
+# distance measurements, so these rules can only be cited as the NORM a
+# recommendation refers to. The verifier flags any claim that says a
+# neighbourhood does or does not meet a rule while citing only the rule.
+
+source_file = "Vuistregels Bewegen RIVM 18-12-2025.pdf"
+source_sha256 = "verify-on-ingest"   # filled/compared by the reference loader
+status_note = "Richtinggevend, geen definitieve norm; uitgangspunt voor gemeenten om eigen richtlijnen op buurtniveau vast te stellen (p. 2)."
+citation = "RIVM (2025). Vuistregels Bewegen. Bilthoven: Rijksinstituut voor Volksgezondheid en Milieu."
+
+[[rule]]
+id = "R1"
+title = "Minimaal 25% van de openbare ruimte om te bewegen"
+text = "Minimaal 25 procent van de openbare ruimte is primair bedoeld voor bewegen, spelen en sporten."
+measure = "aandeel openbare ruimte"
+threshold = 25
+unit = "%"
+target_group = "iedereen"
+themes = ["Sporten", "Formeel spelen", "Informeel spelen", "Actieve mobiliteit"]
+locator = "p. 1, vuistregel 1"
+
+[[rule]]
+id = "R2"
+title = "Binnen 200 meter speelplek voor jonge kinderen"
+text = "Binnen 200 meter loop- of fietsafstand vanaf ieder huis is een speelplek in de openbare ruimte, geschikt voor kinderen tot en met 12 jaar."
+measure = "afstand tot speelplek"
+threshold = 200
+unit = "m"
+target_group = "kinderen t/m 12 jaar"
+themes = ["Formeel spelen", "Informeel spelen"]
+locator = "p. 1, vuistregel 2"
+
+[[rule]]
+id = "R3"
+title = "Binnen 300 meter aaneengesloten beweeggroen"
+text = "Ieder huis heeft binnen 300 meter loop- of fietsafstand toegang tot aaneengesloten beweeggroen van minimaal 1 hectare."
+measure = "afstand tot beweeggroen ≥ 1 ha"
+threshold = 300
+unit = "m"
+target_group = "iedereen"
+themes = ["Informeel spelen", "Actieve mobiliteit", "Ontmoeten"]
+locator = "p. 1, vuistregel 3"
+
+[[rule]]
+id = "R4"
+title = "Binnen 400 meter spelen of sporten voor iedereen ouder dan 12 jaar"
+text = "Binnen 400 meter loop- of fietsafstand vanaf ieder huis is een speel- of sportplek in de openbare ruimte, geschikt voor iedereen ouder dan 12 jaar."
+measure = "afstand tot speel- of sportplek"
+threshold = 400
+unit = "m"
+target_group = "ouder dan 12 jaar"
+themes = ["Sporten", "Formeel spelen"]
+locator = "p. 1, vuistregel 4"
+
+[[rule]]
+id = "R5"
+title = "Voorzieningen voor dagelijks leven op 800 meter"
+text = "Ieder huis heeft binnen 800 meter loop- of fietsafstand een supermarkt, huisartsenpraktijk, basisschool en ov-halte."
+measure = "afstand tot dagelijkse voorzieningen"
+threshold = 800
+unit = "m"
+target_group = "iedereen"
+themes = ["Actieve mobiliteit"]
+locator = "p. 1, vuistregel 5"
+
+[[rule]]
+id = "R6"
+title = "Diversiteit aan sportaccommodaties binnen 1500 meter"
+text = "Ieder huis heeft binnen 1500 meter minimaal drie typen sportaccommodaties."
+measure = "aantal typen sportaccommodaties binnen 1500 m"
+threshold = 1500
+unit = "m"
+target_group = "iedereen"
+themes = ["Sporten"]
+locator = "p. 1, vuistregel 6"

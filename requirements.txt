@@ -1,0 +1,5 @@
+# Python >= 3.11 (tomllib)
+openpyxl>=3.1
+python-docx>=1.1      # demografie .docx ingestion + .docx export
+streamlit>=1.32       # review UI only; core runs without it
+pytest>=8.0           # optional; tests also run with `python -m unittest`
