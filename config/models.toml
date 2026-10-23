@@ -52,6 +52,44 @@ num_ctx = 8192
 ram_gb_estimate = 10.5           # exceeds 60% of 16 GB -> validate_model_config warns
 capabilities = { structured_output = true, context_tokens = 131072, reliable_token_usage = true }
 
+# ---- Vision models (image reading: infographics, symbol maps) -------------
+# Per InsiderLLM's local vision guide (Feb 2026, upd. Jul 2026): Qwen2.5-VL 7B
+# and Qwen3-VL 8B lead on OCR/charts at this size (DocVQA ~95, ChartQA ~87-88),
+# ~6 GB at Q4. Qwen 3.5/3.6 vision did not work in Ollama as of Jul 2026.
+# Maps are NOT read by these models where a deterministic measurement exists
+# (see src/imaging/maps.py for why).
+
+[model.vision_qwen25vl]
+provider = "ollama"
+model = "qwen2.5vl:7b"
+location = "local"
+num_ctx = 8192
+ram_gb_estimate = 7.5            # model ~6 GB + image tokens
+capabilities = { structured_output = true, vision = true, context_tokens = 32768, reliable_token_usage = true }
+
+[model.vision_qwen3vl]
+provider = "ollama"
+model = "qwen3-vl:8b"
+location = "local"
+num_ctx = 8192
+think = false
+ram_gb_estimate = 8.0
+capabilities = { structured_output = true, vision = true, context_tokens = 32768, reliable_token_usage = true }
+
+[model.vision_gemma3_4b]          # smallest option, weaker on OCR (DocVQA ~76)
+provider = "ollama"
+model = "gemma3:4b"
+location = "local"
+num_ctx = 8192
+ram_gb_estimate = 4.0
+capabilities = { structured_output = true, vision = true, context_tokens = 32768, reliable_token_usage = true }
+
+[model.fake_vision]
+provider = "fake"
+model = "fake-vision"
+location = "local"
+capabilities = { structured_output = true, vision = true, context_tokens = 100000 }
+
 # Hosted comparison (experiment E6). Disabled by default: needs an API key in
 # the named environment variable AND stakeholder permission for the data
 # classes it may receive. Resident free text is blocked unless the experiment

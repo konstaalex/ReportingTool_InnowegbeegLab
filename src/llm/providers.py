@@ -11,6 +11,7 @@
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
 import re
@@ -103,9 +104,12 @@ class OllamaProvider(_Base):
 
     def generate(self, request: GenerationRequest) -> GenerationResult:
         def call() -> GenerationResult:
+            messages = [{"role": m.role, "content": m.content} for m in request.messages]
+            if request.images:
+                messages[-1]["images"] = [base64.b64encode(b).decode("ascii") for b in request.images]
             payload = {
                 "model": self._info.model,
-                "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+                "messages": messages,
                 "stream": False,
                 "options": {"temperature": request.temperature, "num_predict": request.max_output_tokens,
                             "num_ctx": self.num_ctx, **({"seed": request.seed} if request.seed is not None else {})},
@@ -151,9 +155,17 @@ class OpenAICompatibleProvider(_Base):
                 if not key:
                     raise ProviderError(f"environment variable {self.api_key_env} is not set")
                 headers["Authorization"] = f"Bearer {key}"
+            messages: list[dict] = [{"role": m.role, "content": m.content} for m in request.messages]
+            if request.images:
+                parts: list[dict] = [{"type": "text", "text": messages[-1]["content"]}]
+                for b in request.images:
+                    mime = "image/png" if b[:4] == b"\x89PNG" else "image/jpeg"
+                    parts.append({"type": "image_url",
+                                  "image_url": {"url": f"data:{mime};base64,{base64.b64encode(b).decode('ascii')}"}})
+                messages[-1]["content"] = parts
             payload: dict = {
                 "model": self._info.model,
-                "messages": [{"role": m.role, "content": m.content} for m in request.messages],
+                "messages": messages,
                 "temperature": request.temperature,
                 "max_tokens": request.max_output_tokens,
             }
@@ -186,6 +198,15 @@ class FakeProvider(_Base):
 
     def generate(self, request: GenerationRequest) -> GenerationResult:
         prompt = request.messages[-1].content
+        if request.images:
+            if request.task == "read_infographic":
+                payload = {"values": [{"chart": "[FAKE] voorbeeld", "area": "Nederland", "label": "testwaarde",
+                                       "value": 50, "unit": "%", "as_printed": "50%"}]}
+            else:
+                payload = {"observations": [{"text": "[FAKE] voorbeeldbeschrijving van de kaart", "area": "",
+                                             "legend_item": ""}]}
+            text = json.dumps(payload, ensure_ascii=False)
+            return GenerationResult(text=text, parsed=payload, provider="fake", model="fake-vision")
         lines = [m for m in (_ID_RE.search(l) for l in prompt.splitlines()) if m]
         claims = []
         for m in lines[:4]:

@@ -35,11 +35,19 @@ python -m experiments.cli run E0    --workspace workspace     # template baselin
 python -m experiments.cli run E1 --workspace workspace --section Sporten --seed 42
 python -m experiments.cli summary --workspace workspace
 
+# 3b. real Oss case (Wijkscan layout) + images: maps measured without a model;
+#     infographics read by a local vision model (ollama pull qwen2.5vl:7b) and confirmed in the UI
+python -m ingestion.cli ingest-wijkscan "$HOME/Desktop/AppliedIT_Masters/Data-Evidence_prj/Perspectieven Oss" \
+    --out workspace --case-id euterpepark-oss --label "Euterpepark Oss"
+python -m imaging.cli analyse --workspace workspace --case euterpepark-oss                      # maps only
+python -m imaging.cli analyse --workspace workspace --case euterpepark-oss --vision-model vision_qwen25vl
+python -m imaging.cli eval-reading --workspace workspace --case euterpepark-oss --gold "$HOME/Desktop/AppliedIT_Masters/Data-Evidence_prj/gold/oss_demografie_readings.toml"   # confidential: never in the repo
+
 # 4. review UI
 INNO_WORKSPACE=workspace INNO_DATA_DIR="$DATA" streamlit run src/ui/streamlit_app.py
 
 # tests (synthetic fixtures only; no research data needed)
-python -m unittest tests.test_buurtscan_ingestion tests.test_evidence_and_verification tests.test_pipelines_review_export
+python -m unittest tests.test_buurtscan_ingestion tests.test_evidence_and_verification tests.test_pipelines_review_export tests.test_imaging_and_oss
 python tests/run_stdlib.py && python tests/run_stdlib_evaluation.py
 ```
 
@@ -58,6 +66,7 @@ python tests/run_stdlib.py && python tests/run_stdlib_evaluation.py
 | `export/` | export gate, Markdown/DOCX report, `evidence_map.csv` | UC6, FR11–FR12 |
 | `experiments/` | run records: config, checksums, fingerprints, tokens, latency, memory, metrics | SQ3, brief §15 |
 | `app/` | `Workspace` services: the only API the UI calls | brief §7 |
+| `imaging/` | map measurement (legend colours per neighbourhood), vision-model reading with self-ensemble, confirmation log, reading evaluation | images as evidence |
 | `ui/` | Streamlit review interface | SQ4 |
 | `config/` | survey→theme mapping (PROPOSED), demografie mapping, models, experiments, RIVM + writing rules | — |
 

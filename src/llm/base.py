@@ -51,10 +51,14 @@ class GenerationRequest:
     json_schema: Optional[dict] = None
     seed: Optional[int] = 42
     contains_resident_free_text: bool = False   # set by the pipeline from the evidence it sends
+    images: list[bytes] = field(default_factory=list)   # PNG/JPEG bytes attached to the last user message
 
     def prompt_sha(self) -> str:
         raw = json.dumps([asdict(m) for m in self.messages], ensure_ascii=False, sort_keys=True)
-        return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:12]
+        h = hashlib.sha256(raw.encode("utf-8"))
+        for img in self.images:
+            h.update(hashlib.sha256(img).digest())
+        return h.hexdigest()[:12]
 
 
 @dataclass

@@ -1,0 +1,151 @@
+# Image inputs: what each image is, how it may be interpreted, and which
+# report theme / RIVM rule it informs. Matched on a lower-case substring of the
+# file name; the FIRST match wins (put specific names before general ones).
+#
+# kind:
+#   map_classes     buildings coloured per legend class -> deterministic pixel shares per neighbourhood
+#   map_objects     locations drawn as coloured markers -> deterministic counts per neighbourhood
+#   infographic     printed numbers / donut + bar charts -> model reading (self-ensemble) + human confirmation
+#   map_vision      icon / symbol map -> model description only, always unconfirmed until checked
+#   chart_derived   chart drawn from a spreadsheet that is ingested itself -> not read (the data is used)
+#   proposal_map    a design proposal ("inspiratie"), NOT the current situation -> never used as a finding
+#   superseded      an older version of another image -> ignored
+#
+# legend: labels in legend order (top -> bottom); the colours are measured
+# from the legend swatches in the image itself, not typed in here.
+# STATUS: transcribed from the Oss maps by the prototype (Oct 2026); to verify.
+
+version = "2026-10-21"
+
+[[image]]
+match = "basisbehoeftekaart oss 2.0"
+id = "basisbehoefte"
+kind = "map_classes"
+title = "Basisbehoeftekaart"
+measure = "aantal basisvoorzieningen (supermarkt, huisarts, basisschool, ov-halte) binnen 800 meter"
+legend = ["0", "1", "2", "3", "4"]
+themes = ["Actieve mobiliteit"]
+rules = ["R5"]
+
+[[image]]
+match = "basisbehoeftekaart"
+id = "basisbehoefte_v1"
+kind = "superseded"
+superseded_by = "basisbehoefte"
+
+[[image]]
+match = "beweeggroenkaart"
+id = "beweeggroen"
+kind = "map_classes"
+title = "Beweeggroenkaart"
+measure = "aaneengesloten beweeggroen (minimaal 1 ha) binnen 300 meter"
+legend = ["Geen groen binnen 300 meter", "Wel groen binnen 300 meter"]
+themes = ["Informeel spelen", "Actieve mobiliteit"]
+rules = ["R3"]
+
+[[image]]
+match = "sportaccommodatiekaart"
+id = "sportaccommodatie"
+kind = "map_classes"
+title = "Sportaccommodatiekaart"
+measure = "aantal typen sportaccommodaties binnen 1500 meter"
+legend = ["0", "1", "2", "3", "4", "5"]
+themes = ["Sporten"]
+rules = ["R6"]
+
+[[image]]
+match = "beweegstructuurkaart"
+id = "beweegstructuur"
+kind = "map_objects"
+title = "Beweegstructuurkaart"
+measure = "sport-, speel- en ontmoetingslocaties per type"
+legend = ["Bovenwijkse plek", "Buurtplek", "Steunplek", "Ontmoetingsplek"]
+themes = ["Sporten", "Formeel spelen", "Ontmoeten"]
+rules = []
+
+[[image]]
+match = "inspiratie sport- en speelkaart"
+id = "inspiratie"
+kind = "proposal_map"
+title = "Inspiratie Sport- en speelkaart"
+note = "Ontwerpvoorstel met mogelijke nieuwe voorzieningen; geen weergave van de huidige situatie."
+
+[[image]]
+match = "sport- en speelkaart oss tot en met 12 jaar"
+id = "speelkaart_t12"
+kind = "map_objects"
+title = "Sport- en speelkaart tot en met 12 jaar"
+measure = "speel- en sportlocaties per type; blauwe zone = binnen 200 meter (kinderen t/m 12 jaar)"
+legend = ["Bovenwijkse plek", "Buurtplek", "Steunplek", "Ontmoetingsplek", "Informele speelplek", "Nog niet geclassificeerd", "Tot en met 12 jaar"]
+overlay = ["Tot en met 12 jaar"]
+themes = ["Formeel spelen", "Informeel spelen"]
+rules = ["R2"]
+
+[[image]]
+match = "sport- en speelkaart oss ouder dan 12 jaar"
+id = "speelkaart_o12"
+kind = "map_objects"
+title = "Sport- en speelkaart ouder dan 12 jaar"
+measure = "speel- en sportlocaties per type; rode zone = binnen 400 meter (ouder dan 12 jaar)"
+legend = ["Bovenwijkse plek", "Buurtplek", "Steunplek", "Ontmoetingsplek", "Informele speelplek", "Nog niet geclassificeerd", "Ouder dan 12 jaar"]
+overlay = ["Ouder dan 12 jaar"]
+themes = ["Sporten", "Formeel spelen"]
+rules = ["R4"]
+
+[[image]]
+match = "sport- en speelkaart"
+id = "speelkaart"
+kind = "map_objects"
+title = "Sport- en speelkaart"
+measure = "speel- en sportlocaties per type, met zones voor t/m 12 jaar (200 m) en ouder dan 12 jaar (400 m)"
+legend = ["Bovenwijkse plek", "Buurtplek", "Steunplek", "Ontmoetingsplek", "Tot en met 12 jaar", "Ouder dan 12 jaar"]
+overlay = ["Tot en met 12 jaar", "Ouder dan 12 jaar"]
+themes = ["Sporten", "Formeel spelen"]
+rules = ["R2", "R4"]
+read_with_model = true   # zone coverage per neighbourhood is not measurable here (borders hidden under overlays)
+
+[[image]]
+match = "voorzieningenkaart"
+id = "voorzieningen"
+kind = "map_vision"
+title = "Voorzieningenkaart"
+measure = "huisartsen, basisscholen, gemeenschapscentra, hondenuitlaatplekken, supermarkten, horeca"
+themes = ["Actieve mobiliteit", "Ontmoeten"]
+rules = ["R5"]
+
+[[image]]
+match = "demografie wijkscan euterpepark 1"
+id = "demografie_1"
+kind = "infographic"
+title = "Demografie Gemeente Oss (leeftijd, vitaliteit, inkomen)"
+themes = []
+tiles = 2                # read in 2 x 2 overlapping tiles: small printed numbers survive downscaling
+
+[[image]]
+match = "demografie wijkscan euterpepark 2"
+id = "demografie_2"
+kind = "infographic"
+title = "Demografie Gemeente Oss (woningtypen, beweegvriendelijke omgeving)"
+themes = []
+tiles = 2
+
+[[image]]
+match = "sunburst"
+id = "sunburst"
+kind = "chart_derived"
+title = "Sunburst expertwandeling"
+derived_from = "Totaal resultaten Expertwandeling Oss maart 2026.xlsx › Totaal scores"
+
+# Neighbourhood regions: seed points relative to the bounding box of the
+# study-area border lines (x, y in 0-1). Checked against the region overlay
+# images the measurement step writes (workspace/images/<case>/*.png).
+[case."euterpepark-oss"]
+region_reference = "basisbehoefte"
+[case."euterpepark-oss".regions]
+"Centrum-West" = [0.61, 0.23]
+"Vlashoek" = [0.32, 0.47]
+"Kortfoort" = [0.81, 0.49]
+"Euterpepark (Euterpelaan-Noord)" = [0.47, 0.57]
+"Beethovengaarde en Lisztgaarde" = [0.61, 0.69]
+"Staatsliedenbuurt" = [0.20, 0.70]
+"Dichtersbuurt" = [0.30, 0.84]

@@ -87,7 +87,20 @@ def main(argv: list[str] | None = None) -> int:
     bs_cmd.add_argument("--out", default="workspace/ingest", help="output directory (store.json, sources.json, ingestion_report.json)")
     bs_cmd.add_argument("--case", action="append", help="limit to case id(s), e.g. passewaaij-tiel")
 
+    ws_cmd = sub.add_parser("ingest-wijkscan", help="Ingest a Wijkscan folder (perspective subfolders, e.g. Perspectieven Oss) into a workspace")
+    ws_cmd.add_argument("folder")
+    ws_cmd.add_argument("--out", default="workspace", help="workspace directory (cases already in it are kept)")
+    ws_cmd.add_argument("--case-id", required=True)
+    ws_cmd.add_argument("--label", required=True)
+
     args = parser.parse_args(argv)
+
+    if args.command == "ingest-wijkscan":
+        from app.services import Workspace
+        summary = Workspace(args.out).ingest(args.folder, case_id=args.case_id, case_label=args.label)
+        print(json.dumps({k: summary[k] for k in ("files_by_status", "unparsed", "cases", "unmapped_survey_questions")},
+                         indent=2, ensure_ascii=False))
+        return 0
 
     if args.command == "ingest-buurtscan":
         from .buurtscan import ingest_buurtscan_folder

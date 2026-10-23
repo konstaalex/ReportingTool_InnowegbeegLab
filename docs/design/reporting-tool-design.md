@@ -121,3 +121,23 @@ Built and tested (49 unit/integration tests, synthetic fixtures; existing stdlib
 | Streamlit UI | written; every code path executed against a stub; **not yet opened in a browser** | — |
 
 Next (in order): (1) run E1/E2 with `local_qwen7b` on Passewaaij, Sporten, 3 seeds, and read the drafts; (2) tune prompt v2 only if failure patterns are systematic, then freeze; (3) `staged_verified` (E4); (4) gold claims for 2 cases to connect `src/evaluation/` metrics; (5) the open questions in §8 with InnoBeweegLab.
+
+## 10. Update 21 Oct 2026 (afternoon): Oss case and images
+
+**Oss / Wijkscan connected to the fact layer.**
+- `ingestion/wijkscan.py` ingests the perspective-folder layout. The human report PDF is **excluded** (status `excluded_reference_report`) because it is the evaluation reference and must not leak into the inputs.
+- **Bug fixed** in the September expert parser. Real Oss sheets number statements per section, but the parser matched on number alone, so every statement got the last theme. It now matches on section k ↔ theme block k and cross-checks the averages in both sheets: 151/151 agree. Section-level remarks are no longer dropped.
+- `survey_tally_parser.py` reads "Resultaten vragenlijst". It is the same questionnaire as the Buurtscan survey, stored as totals per group (65+ en toekomstige bewoners; jongvolwassenen), and it reuses `config/survey_mapping.toml`. A merged matrix header is split per item, and "- 1…- 5" labels are recognised as ratings.
+- Coded open answers ("Gecategoriseerde data") become evidence with their group. Stakeholders are kept apart from residents, and the verifier flags "bewoners …" claims that rest only on stakeholder answers. "Samengevoegde data" is not used, to avoid double counting (open question).
+
+**Images** (see `docs/research/image-interpretation.md`):
+
+| # | Decision | Why |
+|---|---|---|
+| D11 | Maps with colour-coded buildings are measured deterministically (legend swatches, border regions, pixel shares per neighbourhood) | VLMs are unreliable at counting and spatial detail; extract-then-reason is the reliable route (MapQA) |
+| D12 | Infographics are read by a local vision model with a self-ensemble, sanity checks and mandatory researcher confirmation | VLMs read printed numbers well but not perfectly; uncertainty must be visible |
+| D13 | Proposal maps are never findings; counts of locations do not "test" a distance rule; identical legend colours are merged and flagged | no claim may say more than the image shows |
+| D14 | Image interpretation lives in `config/images.toml` (kind, legend, themes, rules, region seeds) | researchers can check and correct it |
+| D15 | Vision-model accuracy is measured against a hand-checked gold file kept outside the repo | SQ3 comparison of vision models; confidential data stays local |
+
+**New open questions for InnoBeweegLab:** (7) Can we get the QGIS layers behind the maps and the data behind the demographic infographics? (8) What is the difference between "Gecategoriseerde data" and "Samengevoegde data"? (9) Should the "Inspiratie" map feed the recommendations section?

@@ -92,7 +92,8 @@ def apply_survey_mapping(records: list[SourceRecord], mapping: dict) -> None:
     """Sets theme / question_id on survey records in place. Unmatched
     questions keep needs_manual_mapping=True (FR3)."""
     for r in records:
-        if r.perspective != "bewoners" or r.extra.get("record_kind") not in ("survey_answer", "survey_column_total"):
+        if r.perspective != "bewoners" or r.extra.get("record_kind") not in ("survey_answer", "survey_column_total",
+                                                                             "survey_tally"):
             continue
         q = _match_question(r.extra.get("question_key", ""), r.subtheme, mapping)
         if q is None:
@@ -105,6 +106,8 @@ def apply_survey_mapping(records: list[SourceRecord], mapping: dict) -> None:
             r.theme = None
             if r.extra.get("record_kind") == "survey_answer":
                 r.extra["option_themes"] = {str(o): option_theme(str(o), mapping) for o in r.extra.get("selected", [])}
+            elif r.extra.get("record_kind") == "survey_tally":
+                r.extra["option_themes"] = {o: option_theme(o, mapping) for o in r.extra.get("counts", {})}
         else:
             r.theme = q["theme"] or None
 

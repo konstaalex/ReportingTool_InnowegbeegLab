@@ -176,7 +176,8 @@ def verify_claim(claim: DraftClaim, section: str, index: dict[str, Evidence],
     if cited and _EXPERT_RE.search(claim.text) and not perspectives & {"expert", "cross"}:
         flags.append(Flag("attribution_mismatch", "weak",
                           "Noemt experts, maar verwijst niet naar de expertwandeling."))
-    if cited and _NORM_RE.search(claim.text) and "reference" not in perspectives:
+    if cited and _NORM_RE.search(claim.text) and "reference" not in perspectives \
+            and not any(e.kind == "map_measurement" and e.data.get("rules") for e in cited):
         flags.append(Flag("attribution_mismatch", "weak",
                           "Noemt de RIVM-vuistregels, maar verwijst er niet naar."))
 
@@ -194,9 +195,22 @@ def verify_claim(claim: DraftClaim, section: str, index: dict[str, Evidence],
                           "Stelt een mening als die van 'de bewoners', maar steunt alleen op losse open antwoorden "
                           "(noem hoeveel bewoners dit zeggen)."))
 
-    if cited and _COMPLIANCE_RE.search(claim.text) and any(e.kind == "norm" for e in cited):
+    if cited and _COMPLIANCE_RE.search(claim.text) and any(e.kind == "norm" for e in cited) \
+            and not any(e.kind == "map_measurement" and e.data.get("tests_rule") for e in cited):
         flags.append(Flag("norm_not_measured", "weak",
-                          "Uitspraak over het (niet) voldoen aan een RIVM-vuistregel; deze dataset meet geen afstanden."))
+                          "Uitspraak over het (niet) voldoen aan een RIVM-vuistregel zonder een meting die de regel toetst."))
+
+    unconfirmed = [e.evidence_id for e in cited if e.kind in ("image_reading", "image_observation")
+                   and not e.data.get("confirmed")]
+    if unconfirmed:
+        flags.append(Flag("image_unconfirmed", "weak",
+                          f"Steunt op door een taalmodel afgelezen beeldinformatie die nog niet is bevestigd: "
+                          f"{', '.join(unconfirmed)}."))
+
+    resident_like = [e for e in cited if e.perspective == "bewoners"]
+    if resident_like and _RESIDENT_RE.search(claim.text) and all(e.data.get("is_stakeholder") for e in resident_like):
+        flags.append(Flag("attribution_mismatch", "weak",
+                          "Noemt bewoners, maar de aangehaalde antwoorden komen van stakeholders (professionals)."))
 
     off_theme = [e.evidence_id for e in cited if e.themes and section not in e.themes and section != "Algemeen"]
     if off_theme:

@@ -41,6 +41,15 @@ OPEN_LABELS = {
     "anders, namelijk:", "omdat:", "toelichting:", "eventuele toelichting:", "open-ended response",
 }
 FOOTER_PREFIX = "totaal aantal antwoorden"
+_RATING_LABEL = re.compile(r"^[\s-]*(\d+)\s*$")
+
+
+def rating_value(option) -> Optional[int]:
+    """1, 3.0, '- 3', ' 4 ' -> int; anything else -> None (rating scales are labelled differently per export)."""
+    if isinstance(option, (int, float)) and not isinstance(option, bool):
+        return int(option)
+    m = _RATING_LABEL.match(str(option)) if option is not None else None
+    return int(m.group(1)) if m else None
 _N_RE = re.compile(r"n\s*=\s*(\d+)")
 
 
@@ -86,27 +95,28 @@ def _common_item(options: list[Optional[str]]) -> Optional[str]:
     return prefixes.pop() if len(prefixes) == 1 else None
 
 
-def build_blocks(ws, neighbourhood: Optional[str]) -> list[QuestionBlock]:
-    max_col = ws.max_column
+def build_blocks(ws, neighbourhood: Optional[str], question_row: int = 1, option_row: int = 2,
+                 first_col: int = 3, max_col: Optional[int] = None) -> list[QuestionBlock]:
+    max_col = max_col or ws.max_column
     spans: dict[int, int] = {}
     for rng in ws.merged_cells.ranges:
-        if rng.min_row == 1 and rng.max_row == 1:
+        if rng.min_row == question_row and rng.max_row == question_row:
             spans[rng.min_col] = rng.max_col
     blocks: list[QuestionBlock] = []
-    col = 3  # A = Respondent, B = Vraag/Antwoord
+    col = first_col  # respondent-level export: A = Respondent, B = Vraag/Antwoord
     n = 0
     while col <= max_col:
-        q = ws.cell(row=1, column=col).value
+        q = ws.cell(row=question_row, column=col).value
         end = spans.get(col, col)
         if q is None:
             col = end + 1
             continue
-        options = [ws.cell(row=2, column=c).value for c in range(col, end + 1)]
+        options = [ws.cell(row=option_row, column=c).value for c in range(col, end + 1)]
         options = [str(o).strip() if isinstance(o, str) else o for o in options]
         open_cols = [col + i for i, o in enumerate(options)
                      if o is None or (isinstance(o, str) and o.strip().lower() in OPEN_LABELS)]
         closed = [o for i, o in enumerate(options) if col + i not in open_cols]
-        if closed and all(isinstance(o, (int, float)) for o in closed):
+        if closed and all(rating_value(o) is not None for o in closed):
             kind = "rating"
         elif closed and all(isinstance(o, str) and " - " in o for o in closed):
             kind = "likert"
@@ -114,14 +124,29 @@ def build_blocks(ws, neighbourhood: Optional[str]) -> list[QuestionBlock]:
             kind = "open"
         else:
             kind = "multi" if "meerdere antwoorden" in str(q).lower() else "choice"
-        n += 1
-        blocks.append(QuestionBlock(
-            block_id=f"Q{n:02d}",
-            question=" ".join(str(q).split()),
-            question_key=_norm_question(q, neighbourhood),
-            item=_common_item(closed) if kind == "likert" else None,
-            first_col=col, last_col=end, options=options, open_cols=open_cols, kind=kind,
-        ))
+        # one merged header over several matrix items ('Wandel- en fietspaden - ...',
+        # 'Natuur/ groen - ...'): split into one block per item, like the per-item exports
+        segments = [(col, end)]
+        if kind == "likert" and _common_item(closed) is None:
+            segments, start = [], col
+            for c in range(col + 1, end + 2):
+                prev = str(options[c - 1 - col]).split(" - ", 1)[0]
+                cur = str(options[c - col]).split(" - ", 1)[0] if c <= end else None
+                if cur != prev:
+                    segments.append((start, c - 1))
+                    start = c
+        for a, z in segments:
+            seg_opts = options[a - col:z - col + 1]
+            seg_open = [c for c in open_cols if a <= c <= z]
+            seg_closed = [o for i, o in enumerate(seg_opts) if a + i not in seg_open]
+            n += 1
+            blocks.append(QuestionBlock(
+                block_id=f"Q{n:02d}",
+                question=" ".join(str(q).split()),
+                question_key=_norm_question(q, neighbourhood),
+                item=_common_item(seg_closed) if kind == "likert" else None,
+                first_col=a, last_col=z, options=seg_opts, open_cols=seg_open, kind=kind,
+            ))
         col = end + 1
     return blocks
 
@@ -173,9 +198,9 @@ def parse_file(path: str, source_file_label: Optional[str] = None, case_id: Opti
                 else:
                     opt = b.options[c - b.first_col]
                     # the COLUMN is the answer; a differing cell value is recorded, not trusted
-                    if b.kind == "rating" and v != opt:
+                    if b.kind == "rating" and rating_value(v) != rating_value(opt):
                         mismatches.append(f"{get_column_letter(c)}{r}: value {v!r} in column for {opt!r}")
-                    selected.append(int(opt) if b.kind == "rating" else opt)
+                    selected.append(rating_value(opt) if b.kind == "rating" else opt)
             if not selected and not open_text:
                 continue
             a, z = get_column_letter(b.first_col), get_column_letter(b.last_col)

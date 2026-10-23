@@ -52,11 +52,74 @@ class Workspace:
         return section.lower().replace(" ", "-")
 
     # ------------------------------------------------------------ UC1
-    def ingest(self, folder: str, cases: Optional[list[str]] = None) -> dict:
-        result = ingest_buurtscan_folder(folder, cases=cases)
+    def ingest(self, folder: str, cases: Optional[list[str]] = None, case_id: Optional[str] = None,
+               case_label: Optional[str] = None, append: bool = True) -> dict:
+        """Ingest a Buurtscan folder (flat, one case per neighbourhood) or a
+        Wijkscan folder (perspective subfolders, one case). With append=True,
+        cases already in the workspace are kept and re-ingested cases replaced."""
+        from ingestion.wijkscan import ingest_wijkscan_folder, is_wijkscan_folder
+        if is_wijkscan_folder(folder):
+            from ingestion.sources import slugify
+            case_id = case_id or slugify(Path(folder).name)
+            result = ingest_wijkscan_folder(folder, case_id, case_label or Path(folder).name)
+        else:
+            result = ingest_buurtscan_folder(folder, cases=cases)
+        if append and self.has_data():
+            result = self._merge(result)
         result.save(self.p("ingest"))
         self._store, self._packs = result.store, {}
         return result.summary()
+
+    def _merge(self, new):
+        """Keep earlier cases; replace records/documents of the cases in `new`."""
+        from ingestion.buurtscan import IngestionResult
+        from ingestion.sources import SourceDocument
+        old_store = self.store()
+        new_cases = set(new.cases)
+        merged = SourceStore()
+        merged.add_many(r for r in old_store.all() if r.case_id not in new_cases and r.perspective != "reference")
+        merged.add_many(new.store.all())
+        docs = [SourceDocument(**d) for d in self.documents() if d.get("case_id") not in new_cases]
+        known = {(d.filename, d.checksum) for d in docs}
+        docs += [d for d in new.documents if (d.filename, d.checksum) not in known]
+        report = self.ingestion_report()
+        cases = {k: v for k, v in report.get("cases", {}).items() if k not in new_cases}
+        cases.update(new.cases)
+        meta_path = self.p("ingest", "survey_meta.json")
+        meta = json.loads(meta_path.read_text(encoding="utf-8")) if meta_path.exists() else {}
+        meta.update(new.survey_meta)
+        return IngestionResult(root=new.root, store=merged, documents=docs, validation=new.validation,
+                               survey_meta=meta, cases=cases)
+
+    def save_store(self) -> None:
+        self.store().save(self.p("ingest", "store.json"))
+        self._packs = {}
+
+    # ------------------------------------------------------------ images
+    def images_dir(self, case_id: str) -> Path:
+        return self.p("images", case_id)
+
+    def analyse_images(self, case_id: str, vision_model_id: Optional[str] = None, samples: int = 3) -> dict:
+        from imaging.pipeline import analyse_case_images
+        provider = None
+        if vision_model_id:
+            problems = validate_model_config(vision_model_id)
+            if problems:
+                raise ValueError("; ".join(problems))
+            provider = get_provider(vision_model_id)
+            if not provider.model_info.capabilities.vision:
+                raise ValueError(f"{vision_model_id} is not a vision model (capabilities.vision = false)")
+        summary = analyse_case_images(self.store(), case_id, self.images_dir(case_id), provider, samples)
+        self.save_store()
+        return summary
+
+    def confirmations(self, case_id: str):
+        from imaging.confirm import ConfirmationLog
+        return ConfirmationLog(self.images_dir(case_id) / "confirmations.json")
+
+    def image_records(self, case_id: str, kinds: tuple[str, ...] = ("image_measurement", "image_reading",
+                                                                    "image_observation")) -> list[SourceRecord]:
+        return [r for r in self.store().all() if r.case_id == case_id and r.extra.get("record_kind") in kinds]
 
     def has_data(self) -> bool:
         return self.p("ingest", "store.json").exists()
@@ -83,11 +146,13 @@ class Workspace:
         if case_id in self._packs and not rebuild:
             return self._packs[case_id]
         path = self.p("evidence", f"{case_id}.json")
-        if path.exists() and not rebuild:
+        inputs = [self.p("ingest", "store.json"), self.images_dir(case_id) / "confirmations.json"]
+        stale = path.exists() and any(i.exists() and i.stat().st_mtime > path.stat().st_mtime for i in inputs)
+        if path.exists() and not rebuild and not stale:
             data = json.loads(path.read_text(encoding="utf-8"))
             packs = {k: EvidencePack.from_dict(v) for k, v in data.items()}
         else:
-            packs = build_case_evidence(self.store(), case_id)
+            packs = build_case_evidence(self.store(), case_id, confirmations=self.confirmations(case_id))
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps({k: v.to_dict() for k, v in packs.items()}, indent=2, ensure_ascii=False),
                             encoding="utf-8")

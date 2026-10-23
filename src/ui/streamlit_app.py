@@ -54,17 +54,22 @@ with st.sidebar:
     else:
         st.info("Nog geen data ingelezen. Begin bij tab 1.")
 
-tab_data, tab_gen, tab_rev, tab_exp, tab_runs = st.tabs(
-    ["1 · Data", "2 · Concept maken", "3 · Beoordelen", "4 · Exporteren", "5 · Experimenten"])
+tab_data, tab_img, tab_gen, tab_rev, tab_exp, tab_runs = st.tabs(
+    ["1 · Data", "1b · Afbeeldingen", "2 · Concept maken", "3 · Beoordelen", "4 · Exporteren", "5 · Experimenten"])
 
 # ---------------------------------------------------------------- 1 data (UC1)
 with tab_data:
     st.subheader("Bronbestanden inlezen")
     folder = st.text_input("Map met bronbestanden", os.environ.get("INNO_DATA_DIR", ""))
+    st.caption("Buurtscan-map (bestanden per buurt naast elkaar) of Wijkscan-map (submappen per perspectief, zoals Oss). "
+               "Eerder ingelezen buurten blijven behouden.")
+    c_id, c_label = st.columns(2)
+    new_case_id = c_id.text_input("Case-id (alleen Wijkscan-map)", "euterpepark-oss")
+    new_case_label = c_label.text_input("Naam (alleen Wijkscan-map)", "Euterpepark Oss")
     if st.button("Inlezen", disabled=not folder):
         with st.spinner("Bestanden inlezen en controleren…"):
             try:
-                ws.ingest(folder)
+                ws.ingest(folder, case_id=new_case_id or None, case_label=new_case_label or None)
                 st.success("Ingelezen.")
                 rerun()
             except Exception as exc:  # noqa: BLE001
@@ -94,6 +99,90 @@ with tab_data:
                        + "; ".join(rep["unmapped_survey_questions"]))
         st.caption(f"{rep['records']['flagged_for_manual_mapping']} records gemarkeerd voor handmatige controle "
                    "(o.a. grafieken die alleen als afbeelding bestaan).")
+
+# ---------------------------------------------------------------- 1b images
+with tab_img:
+    if not case_id:
+        st.info("Lees eerst data in.")
+    else:
+        st.subheader(f"Afbeeldingen · {ws.case_label(case_id)}")
+        st.caption("Kaarten met gekleurde bebouwing of markeringen worden deterministisch gemeten (pixels per legendakleur). "
+                   "Infographics en symboolkaarten worden door een vision-model afgelezen; elke aflezing moet je bevestigen.")
+        vision_models = {k: v for k, v in ws.models().items() if (v.get("capabilities") or {}).get("vision")}
+        vm = st.selectbox("Vision-model voor infographics", ["(geen: alleen kaartmetingen)"] + list(vision_models))
+        n_samples = st.slider("Aantal aflezingen per afbeelding (self-ensemble)", 1, 5, 3)
+        if st.button("Afbeeldingen analyseren"):
+            with st.spinner("Kaarten meten en afbeeldingen lezen… (lokale vision-modellen kunnen minuten nodig hebben)"):
+                try:
+                    summ = ws.analyse_images(case_id, None if vm.startswith("(") else vm, n_samples)
+                    st.success(f"{summ['records_added']} beeldgegevens gemaakt.")
+                except Exception as exc:  # noqa: BLE001
+                    st.error(f"Mislukt: {exc}")
+        summary_path = ws.images_dir(case_id) / "summary.json"
+        if summary_path.exists():
+            import json as _json
+            summ = _json.loads(summary_path.read_text(encoding="utf-8"))
+            st.dataframe([{"afbeelding": k, "soort": v["kind"], "status": v.get("status"),
+                           "waarschuwingen": "; ".join(v.get("warnings") or [])} for k, v in summ["images"].items()],
+                         use_container_width=True, hide_index=True)
+            meas = ws.image_records(case_id, ("image_measurement",))
+            for img_id in sorted({r.extra["image_id"] for r in meas}):
+                rs = [r for r in meas if r.extra["image_id"] == img_id]
+                with st.expander(f"Meting: {rs[0].extra.get('title')} ({len(rs)} gebieden)"):
+                    ov = rs[0].extra.get("overlay")
+                    if ov and Path(ov).exists():
+                        st.image(ov, caption="Controlebeeld: geteld in legendakleur, buurtgrenzen in zwart", use_container_width=True)
+                    rows = []
+                    for r in rs:
+                        vals = r.extra.get("shares") or r.extra.get("counts") or {}
+                        rows.append({"gebied": r.extra["area"],
+                                     **{k: (f"{round(v * 100)}%" if isinstance(v, float) else v) for k, v in vals.items()}})
+                    st.dataframe(rows, use_container_width=True, hide_index=True)
+                    for w in rs[0].extra.get("warnings") or []:
+                        st.warning(w)
+            conf = ws.confirmations(case_id)
+            reads = ws.image_records(case_id, ("image_reading", "image_observation"))
+            if reads:
+                st.markdown("#### Aflezingen door het vision-model")
+                if conf.verify_chain():
+                    st.error("Het bevestigingslog is gewijzigd buiten de tool om.")
+                pending = [r for r in reads if conf.status(r.id)[0] == "unconfirmed"]
+                st.caption(f"{len(pending)} van {len(reads)} nog niet bevestigd.")
+                only_pending = st.checkbox("Toon alleen niet-bevestigde aflezingen", value=True)
+                shown_imgs = set()
+                for r in reads:
+                    status, corrected, _ = conf.status(r.id)
+                    if only_pending and status != "unconfirmed":
+                        continue
+                    src = next((x for x in ws.store().all() if x.id == r.extra.get("image_record_id")), None)
+                    if src is not None and src.id not in shown_imgs and src.extra.get("absolute_path"):
+                        shown_imgs.add(src.id)
+                        st.image(src.extra["absolute_path"], caption=src.source_file, use_container_width=True)
+                    with st.container(border=True):
+                        if r.extra.get("record_kind") == "image_reading":
+                            agree = r.extra.get("agreement")
+                            st.markdown(f"**{r.extra.get('chart')} › {r.extra.get('area')} › {r.extra.get('label')}**: "
+                                        f"{r.extra.get('as_printed')} (waarde {r.value})"
+                                        + (f" → gecorrigeerd naar **{corrected}**" if status == "corrected" else ""))
+                            st.caption(f"status: {status} · overeenstemming tussen aflezingen: "
+                                       f"{'?' if agree is None else f'{round(agree * 100)}%'} · gezien: {r.extra.get('values_seen')}")
+                            for chk in r.extra.get("checks") or []:
+                                st.markdown(f"🟠 {chk}")
+                        else:
+                            st.markdown(f"**{r.extra.get('title')}** (modelbeschrijving): {r.text}")
+                            st.caption(f"status: {status}")
+                        b = st.columns([1, 2, 1, 1])
+                        if b[0].button("Klopt", key=f"imgok_{r.id}", disabled=not reviewer):
+                            conf.confirm(r.id, reviewer)
+                            rerun()
+                        if r.extra.get("record_kind") == "image_reading":
+                            newv = b[1].number_input("Juiste waarde", value=float(r.value or 0), key=f"imgval_{r.id}")
+                            if b[2].button("Corrigeer", key=f"imgfix_{r.id}", disabled=not reviewer):
+                                conf.correct(r.id, newv, reviewer)
+                                rerun()
+                        if b[3].button("Afwijzen", key=f"imgno_{r.id}", disabled=not reviewer):
+                            conf.reject(r.id, reviewer)
+                            rerun()
 
 # ---------------------------------------------------------------- 2 generate (UC2, UC5)
 with tab_gen:
