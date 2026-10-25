@@ -5,6 +5,9 @@
 # kind:
 #   map_classes     buildings coloured per legend class -> deterministic pixel shares per neighbourhood
 #   map_objects     locations drawn as coloured markers -> deterministic counts per neighbourhood
+#   map_zones       translucent distance zones (RIVM 200 m / 400 m) -> share of homes inside the zone per
+#                   neighbourhood; homes and neighbourhoods come from the case's region_reference map,
+#                   registered on the shared base map (zone = legend entry named in `zone`)
 #   infographic     printed numbers / donut + bar charts -> model reading (self-ensemble) + human confirmation
 #   map_vision      icon / symbol map -> model description only, always unconfirmed until checked
 #   chart_derived   chart drawn from a spreadsheet that is ingested itself -> not read (the data is used)
@@ -15,7 +18,7 @@
 # from the legend swatches in the image itself, not typed in here.
 # STATUS: transcribed from the Oss maps by the prototype (Oct 2026); to verify.
 
-version = "2026-10-21"
+version = "2026-10-23"
 
 [[image]]
 match = "basisbehoeftekaart oss 2.0"
@@ -73,22 +76,22 @@ note = "Ontwerpvoorstel met mogelijke nieuwe voorzieningen; geen weergave van de
 [[image]]
 match = "sport- en speelkaart oss tot en met 12 jaar"
 id = "speelkaart_t12"
-kind = "map_objects"
+kind = "map_zones"
 title = "Sport- en speelkaart tot en met 12 jaar"
-measure = "speel- en sportlocaties per type; blauwe zone = binnen 200 meter (kinderen t/m 12 jaar)"
+measure = "speelplek binnen 200 meter, kinderen t/m 12 jaar"
 legend = ["Bovenwijkse plek", "Buurtplek", "Steunplek", "Ontmoetingsplek", "Informele speelplek", "Nog niet geclassificeerd", "Tot en met 12 jaar"]
-overlay = ["Tot en met 12 jaar"]
+zone = "Tot en met 12 jaar"
 themes = ["Formeel spelen", "Informeel spelen"]
 rules = ["R2"]
 
 [[image]]
 match = "sport- en speelkaart oss ouder dan 12 jaar"
 id = "speelkaart_o12"
-kind = "map_objects"
+kind = "map_zones"
 title = "Sport- en speelkaart ouder dan 12 jaar"
-measure = "speel- en sportlocaties per type; rode zone = binnen 400 meter (ouder dan 12 jaar)"
+measure = "speel- of sportplek binnen 400 meter, ouder dan 12 jaar"
 legend = ["Bovenwijkse plek", "Buurtplek", "Steunplek", "Ontmoetingsplek", "Informele speelplek", "Nog niet geclassificeerd", "Ouder dan 12 jaar"]
-overlay = ["Ouder dan 12 jaar"]
+zone = "Ouder dan 12 jaar"
 themes = ["Sporten", "Formeel spelen"]
 rules = ["R4"]
 
@@ -101,8 +104,7 @@ measure = "speel- en sportlocaties per type, met zones voor t/m 12 jaar (200 m) 
 legend = ["Bovenwijkse plek", "Buurtplek", "Steunplek", "Ontmoetingsplek", "Tot en met 12 jaar", "Ouder dan 12 jaar"]
 overlay = ["Tot en met 12 jaar", "Ouder dan 12 jaar"]
 themes = ["Sporten", "Formeel spelen"]
-rules = ["R2", "R4"]
-read_with_model = true   # zone coverage per neighbourhood is not measurable here (borders hidden under overlays)
+rules = ["R2", "R4"]       # the zones themselves are measured on the two separate maps above
 
 [[image]]
 match = "voorzieningenkaart"
@@ -139,6 +141,8 @@ derived_from = "Totaal resultaten Expertwandeling Oss maart 2026.xlsx › Totaal
 # Neighbourhood regions: seed points relative to the bounding box of the
 # study-area border lines (x, y in 0-1). Checked against the region overlay
 # images the measurement step writes (workspace/images/<case>/*.png).
+# region_reference: the map whose borders and coloured buildings (= homes) are
+# carried over to maps that cannot show them (zones, markers over borders).
 [case."euterpepark-oss"]
 region_reference = "basisbehoefte"
 [case."euterpepark-oss".regions]

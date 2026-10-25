@@ -28,7 +28,8 @@
 1. **Measure deterministically wherever the map encodes the answer in colour** (`maps.py`). Legend swatches are found automatically and paired with the legend labels in `config/images.toml`. Neighbourhoods are the regions enclosed by the black border lines, named via seed points. Pixels per legend colour are counted per neighbourhood. This is reproducible, needs no model, and writes an overlay image so the researcher can check what was counted. What it measures is the share of coloured *map area*, not the number of homes, and every statement says so.
 2. **Read with a vision model only where the information is printed text or icons** (`vision.py`). Each image is read N times (self-ensemble, median, agreement), optionally in overlapping tiles, with deterministic checks: percentages must lie in 0–100 and donut parts must sum to about 100%.
 3. **The researcher confirms every model reading** (`confirm.py`, UI tab "Afbeeldingen"). Readings stay *unconfirmed* until confirmed, corrected or rejected, and the log is hash-chained. The verifier marks any claim that relies on an unconfirmed reading as weak (`image_unconfirmed`).
-4. **The tool is honest about what an image cannot show.** A proposal map is never used as a finding. Counting play locations is not testing a distance rule (only colour-coded buildings test R3/R5/R6). Classes drawn in identical colours are merged and flagged. A chart drawn from an ingested spreadsheet is not read at all.
+4. **Measure distance zones as coverage of homes** (`maps.measure_zone_coverage`). The map is registered on the shared base map, and homes and neighbourhoods come from the reference map. The tint test is a projection of the pixel chroma onto the legend swatch's chroma, and an overlay image shows covered homes in blue and uncovered homes in red.
+5. **The tool is honest about what an image cannot show.** A proposal map is never used as a finding. Counting play locations is not testing a distance rule (colour-coded buildings test R3/R5/R6, distance zones test R2/R4). Classes drawn in identical colours are merged and flagged. A chart drawn from an ingested spreadsheet is not read at all.
 
 ## 4. Results on the Oss maps (deterministic, no model)
 
@@ -39,7 +40,14 @@
 | "bijna ieder huis heeft 3 of 4 voorzieningen binnen 800 m" | 89% class 3–4; Vlashoek 61% class 2 |
 | "gemiddeld twee sportaccommodaties binnen 1500 m" | 99.7% class 2 |
 
-Neighbourhood detection: 7 regions found on all five building/structure maps, and a template transferred by registration matched the directly detected regions 100%. **Limitation:** on the four sport/play maps the borders are hidden under semi-transparent zones and are drawn differently, so per-neighbourhood zone coverage is not measured. The tool reports this instead of guessing.
+Neighbourhood detection: 7 regions found on all five building/structure maps, and a template transferred by registration matched the directly detected regions 100%.
+
+**Update 23 Oct: distance zones (RIVM R2/R4) measured.** On the sport-and-play maps the borders lie under translucent zones, so the maps are registered on the base map they share with the Basisbehoeftekaart, using the street and building edges. Homes and neighbourhoods are then carried over from that map, and a home counts as covered when it carries the zone's tint. The fit is verified independently: 94–95% of the carried-over borders land on the play maps' own border lines, while a deliberately wrong fit scores 30–47%.
+
+| Report statement | Measured from the image |
+|---|---|
+| "de huidige sport- en speelvoorzieningen dekken het nieuwe Euterpepark niet" | 6% of the Euterpepark area within 200 m of a play area (up to 12 years); 59% within 400 m (older than 12) |
+| "sommige delen … voldoen nog niet, met name tot en met 12 jaar" | homes within 200 m: 53% overall, Centrum-West 38%; within 400 m: 81% overall, Centrum-West 72% |
 
 ## 5. Evaluation (SQ3) — how to compare vision models
 

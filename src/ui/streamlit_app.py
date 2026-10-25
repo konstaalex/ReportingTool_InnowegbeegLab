@@ -24,7 +24,13 @@ from review.session import RESOLVED, NeedsOverride, ReviewError  # noqa: E402
 
 STATUS_BADGE = {"grounded": "🟢 onderbouwd", "weak": "🟠 zwak onderbouwd", "unsupported": "🔴 niet onderbouwd"}
 REVIEW_BADGE = {"draft": "⏳ te beoordelen", "approved": "✅ goedgekeurd", "edited": "✏️ aangepast", "rejected": "🗑️ verwijderd"}
-PERSPECTIVE_NL = {"expert": "Expert", "bewoners": "Bewoners", "data": "Data", "reference": "RIVM", "cross": "Vergelijking"}
+PERSPECTIVE_NL = {"expert": "Expert", "bewoners": "Bewoners", "data": "Data", "reference": "RIVM", "cross": "Vergelijking",
+                  "context": "Context"}
+SECTION_HELP = {
+    "Aanleiding": "Gebaseerd op onderzoekersnotities van de soort 'Projectcontext' (tab 1 › Onderzoekersnotities).",
+    "Conclusies": "Over de thema's heen: scores per thema, getoetste vuistregels, factoren die bij meerdere thema's "
+                  "terugkomen. Aanbevelingen schrijf je zelf.",
+}
 
 st.set_page_config(page_title="InnoBeweegLab rapportage", layout="wide")
 
@@ -40,7 +46,7 @@ def get_ws(path: str) -> Workspace:
 
 # ---------------------------------------------------------------- sidebar
 with st.sidebar:
-    st.title("Buurtscan-rapportage")
+    st.title("Wijkscan-rapportage")
     st.caption("Onderzoeksprototype. Alle tekst is een CONCEPT tot een onderzoeker die goedkeurt.")
     ws_path = st.text_input("Werkmap", os.environ.get("INNO_WORKSPACE", "workspace"))
     ws = get_ws(ws_path)
@@ -54,8 +60,9 @@ with st.sidebar:
     else:
         st.info("Nog geen data ingelezen. Begin bij tab 1.")
 
-tab_data, tab_img, tab_gen, tab_rev, tab_exp, tab_runs = st.tabs(
-    ["1 · Data", "1b · Afbeeldingen", "2 · Concept maken", "3 · Beoordelen", "4 · Exporteren", "5 · Experimenten"])
+tab_data, tab_img, tab_gen, tab_rev, tab_exp, tab_report, tab_runs = st.tabs(
+    ["1 · Data", "1b · Afbeeldingen", "2 · Concept maken", "3 · Beoordelen", "4 · Exporteren",
+     "5 · Rapport per model", "6 · Experimenten"])
 
 # ---------------------------------------------------------------- 1 data (UC1)
 with tab_data:
@@ -100,13 +107,43 @@ with tab_data:
         st.caption(f"{rep['records']['flagged_for_manual_mapping']} records gemarkeerd voor handmatige controle "
                    "(o.a. grafieken die alleen als afbeelding bestaan).")
 
+    if case_id:
+        st.divider()
+        st.subheader(f"Onderzoekersnotities · {ws.case_label(case_id)}")
+        st.caption("Wat jullie weten maar wat in geen bronbestand staat: observaties tijdens de wandeling (plek, foto), "
+                   "wat bewoners op de bijeenkomst zeiden, projectcontext voor de aanleiding, literatuur. Elke notitie "
+                   "krijgt een bewijsstuk-id (O-…) en een bron. Wat hier niet staat, mag de tool niet schrijven.")
+        tmpl = ws.p("notes", "Onderzoekersnotities_sjabloon.xlsx")
+        if not tmpl.exists():
+            ws.write_notes_template(tmpl)
+        st.download_button("Download leeg sjabloon (Excel)", tmpl.read_bytes(), file_name="Onderzoekersnotities.xlsx")
+        up = st.file_uploader("Ingevulde notities (Excel, werkblad 'Notities')", type=["xlsx"], key="notes_upload")
+        if up is not None and st.button("Notities inlezen", disabled=not reviewer):
+            dest = ws.p("notes", case_id, up.name)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            dest.write_bytes(up.getvalue())
+            try:
+                res = ws.ingest_notes(dest, case_id)
+                st.success(f"{res['records']} notities ingelezen ({', '.join(f'{v}× {k}' for k, v in res['by_type'].items())}).")
+                for prob in res["problems"]:
+                    st.warning(prob)
+            except Exception as exc:  # noqa: BLE001
+                st.error(f"Inlezen mislukt: {exc}")
+        notes = ws.notes(case_id)
+        if notes:
+            st.dataframe([{"soort": r.subtheme, "thema": ", ".join(r.extra.get("themes") or []) or "Algemeen",
+                           "plek": r.extra.get("place") or "", "notitie": r.text, "bron": r.extra.get("source") or "⚠️ ontbreekt",
+                           "bestand": f"{r.source_file} › {r.locator}"} for r in notes],
+                         use_container_width=True, hide_index=True)
+
 # ---------------------------------------------------------------- 1b images
 with tab_img:
     if not case_id:
         st.info("Lees eerst data in.")
     else:
         st.subheader(f"Afbeeldingen · {ws.case_label(case_id)}")
-        st.caption("Kaarten met gekleurde bebouwing of markeringen worden deterministisch gemeten (pixels per legendakleur). "
+        st.caption("Kaarten met gekleurde bebouwing of markeringen worden deterministisch gemeten (pixels per legendakleur); "
+                   "bij sport- en speelkaarten wordt geteld welk deel van de woningen binnen de afstandszone ligt. "
                    "Infographics en symboolkaarten worden door een vision-model afgelezen; elke aflezing moet je bevestigen.")
         vision_models = {k: v for k, v in ws.models().items() if (v.get("capabilities") or {}).get("vision")}
         vm = st.selectbox("Vision-model voor infographics", ["(geen: alleen kaartmetingen)"] + list(vision_models))
@@ -134,6 +171,12 @@ with tab_img:
                         st.image(ov, caption="Controlebeeld: geteld in legendakleur, buurtgrenzen in zwart", use_container_width=True)
                     rows = []
                     for r in rs:
+                        if r.extra.get("measure_kind") == "coverage":
+                            cv = r.extra["coverage"]
+                            rows.append({"gebied": r.extra["area"],
+                                         "woningen binnen de zone": "geen woningen" if cv["homes_pct"] is None else f"{cv['homes_pct']}%",
+                                         "gebied binnen de zone": f"{cv['area_pct']}%"})
+                            continue
                         vals = r.extra.get("shares") or r.extra.get("counts") or {}
                         rows.append({"gebied": r.extra["area"],
                                      **{k: (f"{round(v * 100)}%" if isinstance(v, float) else v) for k, v in vals.items()}})
@@ -193,12 +236,20 @@ with tab_gen:
         section = st.selectbox("Onderdeel", SECTIONS, key="gen_section")
         packs = ws.evidence(case_id)
         pack = packs[section]
+        if section in SECTION_HELP:
+            st.caption(SECTION_HELP[section])
+        if not pack.items:
+            st.info("Geen bewijsstukken voor dit onderdeel." + (" Lees eerst onderzoekersnotities in (tab 1)."
+                                                                 if section == "Aanleiding" else ""))
         col1, col2, col3 = st.columns(3)
         pipeline = col1.selectbox("Pijplijn", PIPELINES, index=1,
                                   help="template = zonder taalmodel; naive = één prompt; staged = per perspectief + synthese")
         models = ws.models()
-        model_id = col2.selectbox("Model", list(models), disabled=pipeline == "template",
-                                  format_func=lambda m: f"{m} ({models[m].get('location', 'local')})")
+        chosen = ws.selected_models()
+        show_all = st.checkbox("Alle modellen tonen (ook buiten de drie gekozen modellen)", key="gen_all_models")
+        options = list(models) if show_all or not chosen else chosen
+        model_id = col2.selectbox("Model", options, disabled=pipeline == "template",
+                                  format_func=lambda m: f"{m} · {models[m].get('model', '')} ({models[m].get('location', 'local')})")
         selection = col3.selectbox("Bewijsselectie", ["all", "top_k:15", "top_k:25"])
         problems = [] if pipeline == "template" else ws.model_problems(model_id)
         for p in problems:
@@ -387,7 +438,106 @@ with tab_exp:
                                    key=f"dl_{kind}")
             st.markdown(Path(files["markdown"]).read_text(encoding="utf-8"))
 
-# ---------------------------------------------------------------- 5 experiments (SQ3)
+# ---------------------------------------------------------------- 5 full report per model (SQ3)
+def _pct(x) -> str:
+    return "–" if x is None else f"{round(100 * x)}%"
+
+
+with tab_report:
+    if not case_id:
+        st.info("Lees eerst data in.")
+    else:
+        st.subheader(f"Volledig rapport per model · {ws.case_label(case_id)}")
+        st.caption("Eén model schrijft alle onderdelen; de tool maakt er een Word-rapport in de huisstijl van. "
+                   "Deze rapporten zijn onbeoordeelde concepten en staan los van de beoordeling in tab 3. "
+                   "Kies er één als startpunt voor de beoordeling, of vergelijk ze met het originele rapport.")
+        models = ws.models()
+        chosen = ws.selected_models()
+        st.markdown("**De drie gekozen modellen** (`config/models.toml` › `[selection]`)")
+        st.dataframe([{"model": m, "naam": models[m].get("model", ""), "geheugen (GB)": models[m].get("ram_gb_estimate"),
+                       "status": "klaar" if not ws.model_problems(m) else "; ".join(ws.model_problems(m))}
+                      for m in chosen], hide_index=True, use_container_width=True)
+
+        st.markdown("#### Rapporten maken")
+        c1, c2, c3 = st.columns([3, 1, 1])
+        pick = c1.multiselect("Modellen", chosen + [m for m in models if m not in chosen], default=chosen,
+                              key="rep_models")
+        pipe = c2.selectbox("Pijplijn", ["staged", "naive"], key="rep_pipe",
+                            help="staged = per perspectief + synthese; naive = één prompt per onderdeel")
+        with_template = c3.checkbox("+ template (zonder model)", value=True, key="rep_tpl")
+        want_pdf = st.checkbox("Ook PDF maken (LibreOffice nodig)", key="rep_pdf")
+        st.caption("Lokale modellen hebben per rapport enkele minuten tot een half uur nodig (9 onderdelen). "
+                   "Voor lange runs: `python -m reports.cli compare --case " + case_id + " --generate --include-template`.")
+        if st.button("Rapporten maken", type="primary", disabled=not (pick or with_template)):
+            todo = (["template"] if with_template else []) + pick
+            for m in todo:
+                with st.status(f"{m} …", expanded=False) as box:
+                    try:
+                        run = ws.report_run(case_id, m, pipeline=pipe, pdf=want_pdf, progress=box.write)
+                        t = run["totals"]
+                        box.update(label=f"{m}: {t['n_claims']} beweringen, onderbouwd {_pct(t['grounded_rate'])}"
+                                         + (f", mislukt: {', '.join(t['failed_sections'])}" if t["failed_sections"] else ""),
+                                   state="complete")
+                    except Exception as exc:  # noqa: BLE001
+                        box.update(label=f"{m}: mislukt: {exc}", state="error")
+
+        runs = ws.report_runs(case_id)
+        st.markdown("#### Gemaakte rapporten")
+        if not runs:
+            st.info("Nog geen rapporten.")
+        else:
+            st.dataframe([{"run": r["run_id"], "model": r.get("model_id") or "template", "pijplijn": r["pipeline"],
+                           "beweringen": r["totals"]["n_claims"], "onderbouwd": _pct(r["totals"]["grounded_rate"]),
+                           "niet onderbouwd": _pct(r["totals"]["unsupported_rate"]), "tijd (s)": r["totals"]["wall_s"],
+                           "dekking origineel": _pct((r.get("evaluation") or {}).get("content", {}).get("coverage"))
+                           if r.get("evaluation") else "–"} for r in reversed(runs)],
+                         hide_index=True, use_container_width=True)
+            run_id = st.selectbox("Rapport", [r["run_id"] for r in reversed(runs)], key="rep_run")
+            run = next(r for r in runs if r["run_id"] == run_id)
+            rdir = ws.report_run_dir(case_id, run_id)
+            cols = st.columns(4)
+            for i, (kind, name) in enumerate(run.get("files", {}).items()):
+                f = rdir / name
+                if f.is_file():
+                    cols[i].download_button(f"Download {kind.upper()}", f.read_bytes(), file_name=name, key=f"rep_dl_{kind}")
+            if cols[3].button("Gebruik als concept voor beoordeling", disabled=not reviewer,
+                              help="Start de beoordeling (tab 3) met de concepten van dit rapport. Bestaande "
+                                   "beoordelingen worden gearchiveerd, niet verwijderd."):
+                secs = ws.adopt_report_run(case_id, run_id, reviewer)
+                st.success("Beoordeling gestart voor: " + ", ".join(secs))
+
+        st.markdown("#### Vergelijken met het originele rapport")
+        ref = ws.reference_report(case_id)
+        st.caption("Alleen evaluatie: het originele rapport is nooit invoer voor een concept. De uitkomst citeert het "
+                   "origineel en blijft in de werkmap.")
+        ref_path = st.text_input("Origineel rapport (PDF)", str(ref) if ref else "", key="rep_ref",
+                                 help="Gevonden bij het inlezen als het in de casusmap staat; anders hier het pad invullen.")
+        use_judge = st.checkbox("Laat een lokaal model de overeenkomst beoordelen (nauwkeuriger, duurt langer)",
+                                key="rep_judge")
+        judge = st.selectbox("Beoordelaar", [m for m in chosen if models[m].get("location", "local") == "local"],
+                             key="rep_judge_model", disabled=not use_judge) if use_judge else None
+        latest = ws.latest_report_runs(case_id)
+        if st.button("Vergelijk de laatste run per model", disabled=not (latest and ref_path)):
+            with st.spinner("Vergelijken…"):
+                try:
+                    out = ws.compare_report_runs(case_id, list(latest.values()), reference_pdf=ref_path,
+                                                 judge_model=judge)
+                    st.session_state["rep_cmp"] = out["markdown"]
+                except Exception as exc:  # noqa: BLE001
+                    st.error(f"Mislukt: {exc}")
+        cmp_md = ws.p("reports", case_id, "comparison", "comparison.md")
+        if cmp_md.is_file():
+            st.markdown(cmp_md.read_text(encoding="utf-8"))
+        if runs:
+            ev_dir = ws.report_run_dir(case_id, st.session_state.get("rep_run") or runs[-1]["run_id"]) / "evaluation"
+            if (ev_dir / "evaluation.md").is_file():
+                with st.expander("Details van het gekozen rapport (per hoofdstuk, afwijkende getallen)"):
+                    st.markdown((ev_dir / "evaluation.md").read_text(encoding="utf-8"))
+                    st.download_button("Download alignment.csv (voor kalibratie: vul human_label in)",
+                                       (ev_dir / "alignment.csv").read_bytes(), file_name="alignment.csv",
+                                       key="rep_dl_align")
+
+# ---------------------------------------------------------------- 6 experiments (SQ3)
 with tab_runs:
     st.subheader("Experimenten")
     st.caption("Lange runs liever via de command line: `python -m experiments.cli run E1 --workspace workspace`.")

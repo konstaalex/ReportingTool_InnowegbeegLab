@@ -1,0 +1,11 @@
+Onderdeel: aanleiding van het onderzoek in $case_label.
+
+Schrijf 2 tot 5 beweringen in één of twee alinea's (veld "paragraph"): wat er in het gebied gaat gebeuren, wie de opdracht gaf en welke vraag het onderzoek beantwoordt. Gebruik uitsluitend de projectcontext hieronder; wat daar niet staat, laat je weg.
+
+Niet beschikbaar (noem deze niet als feit):
+$unavailable
+
+Bewijsstukken:
+$evidence
+
+JSON-schema: {"claims": [{"text": "...", "type": "bevinding", "evidence_ids": ["..."], "paragraph": 1}]}

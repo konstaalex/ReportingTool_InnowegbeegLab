@@ -8,6 +8,11 @@ Same input, same output contract, so experiments compare like with like.
     naive     1 call. Whole (selected) pack -> all claims.          (E1)
     staged    1 call per perspective for findings + 1 synthesis call. (E2/E3)
 
+The two non-theme sections have their own single-call prompt whatever the
+pipeline (naive or staged), because they have no perspectives to stage:
+    Conclusies   cross-theme pack (prompt 'conclusions', from prompt v2)
+    Aanleiding   project-context notes (prompt 'aanleiding', from prompt v2)
+
 Verification is NOT part of a pipeline: it always runs afterwards
 (verification.checks.verify_section) so every variant is measured the same way.
 """
@@ -19,7 +24,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Optional
 
-from evidence.models import THEME_CODES, Evidence, EvidencePack
+from evidence.models import AANLEIDING, CONCLUSIES, SECTION_CODES, Evidence, EvidencePack
 from llm.base import GenerationRequest, LLMProvider, Message, PrivacyViolation
 from llm.privacy import check_request
 
@@ -61,7 +66,7 @@ _ID_CLEAN = re.compile(r"[\[\]\s()]")
 @dataclass
 class PipelineConfig:
     pipeline_id: str = "naive"
-    prompt_version: str = "v1"
+    prompt_version: str = "v2"
     selection: str = "all"               # "all" | "top_k:<n>"
     temperature: float = 0.2
     seed: Optional[int] = 42
@@ -151,31 +156,55 @@ def _new_draft(pack: EvidencePack, cfg: PipelineConfig, provider: Optional[LLMPr
 
 
 def _prefix(section: str) -> str:
-    return THEME_CODES.get(section, "AL")
+    return SECTION_CODES.get(section, "AL")
 
 
 # ------------------------------------------------------------------ pipelines
+
+def _theme_picks(items: list[Evidence]) -> list[tuple[Evidence, str, int]]:
+    """House-style order (as in the Oss report): 1 data/maps, 2 experts, 3 residents, 4 synthesis."""
+    picks: list[tuple[Evidence, str, int]] = []
+    data = [e for e in items if e.perspective == "data"]
+    rule = [e for e in data if e.kind == "map_measurement" and e.data.get("tests_rule") and e.data.get("area") == "onderzoeksgebied"]
+    picks += [(e, "bevinding", 1) for e in (rule[:2] or data[:1])]
+    exp = [e for e in items if e.perspective == "expert" and e.kind != "note"]
+    avg = next((e for e in exp if e.kind == "theme_average"), None)
+    if avg:
+        picks.append((avg, "bevinding", 2))
+    stm = sorted([e for e in exp if e.kind == "expert_statement"], key=lambda e: -e.salience)[:3]
+    picks += [(e, "bevinding", 2) for e in stm]
+    notes = sorted([e for e in items if e.kind == "note"], key=lambda e: -e.salience)[:2]
+    picks += [(e, "bevinding", 2 if e.perspective == "expert" else 3) for e in notes]
+    res = [e for e in items if e.perspective == "bewoners" and e.kind not in ("quote", "note")]
+    picks += [(e, "bevinding", 3) for e in sorted(res, key=lambda e: -e.salience)[:3]]
+    quotes = sorted([e for e in items if e.kind == "quote" and e.data.get("count", 1) >= 2], key=lambda e: -e.salience)[:2]
+    picks += [(e, "bevinding", 3) for e in quotes]
+    picks += [(e, "interpretatie", 4) for e in items if e.kind == "comparison"]
+    return picks
+
+
+def _conclusion_picks(items: list[Evidence]) -> list[tuple[Evidence, str, int]]:
+    cross = [e for e in items if e.kind == "cross_theme"]
+    rankings = [e for e in cross if "means" in e.data]
+    rules = [e for e in cross if "rules" in e.data and "term" not in e.data]
+    terms = [e for e in cross if "term" in e.data][:4]
+    return ([(e, "bevinding", 1) for e in rankings] + [(e, "bevinding", 2) for e in rules]
+            + [(e, "bevinding", 3) for e in terms])
+
 
 def template_pipeline(pack: EvidencePack, cfg: PipelineConfig) -> SectionDraft:
     draft = _new_draft(pack, cfg, None)
     t0 = time.perf_counter()
     items = pack.items
-    picks: list[tuple[Evidence, str, int]] = []
-    exp = [e for e in items if e.perspective == "expert"]
-    avg = next((e for e in exp if e.kind == "theme_average"), None)
-    if avg:
-        picks.append((avg, "bevinding", 1))
-    stm = sorted([e for e in exp if e.kind == "expert_statement"], key=lambda e: -e.salience)[:3]
-    picks += [(e, "bevinding", 1) for e in stm]
-    res = [e for e in items if e.perspective == "bewoners" and e.kind != "quote"]
-    picks += [(e, "bevinding", 2) for e in sorted(res, key=lambda e: -e.salience)[:3]]
-    quotes = sorted([e for e in items if e.kind == "quote" and e.data.get("count", 1) >= 2], key=lambda e: -e.salience)[:2]
-    picks += [(e, "bevinding", 2) for e in quotes]
-    picks += [(e, "bevinding", 3) for e in items if e.perspective == "data"][:1]
-    picks += [(e, "interpretatie", 3) for e in items if e.kind == "comparison"]
+    if pack.section == CONCLUSIES:
+        picks = _conclusion_picks(items)
+    elif pack.section == AANLEIDING:
+        picks = [(e, "bevinding", 1) for e in items if e.kind == "note"]
+    else:
+        picks = _theme_picks(items)
     prefix = _prefix(pack.section)
     for i, (e, ctype, para) in enumerate(picks, start=1):
-        text = e.statement.split(" Let op:")[0]
+        text = e.data.get("text") if (pack.section == AANLEIDING and e.data.get("text")) else e.statement.split(" Let op:")[0]
         draft.claims.append(DraftClaim(claim_id=f"{prefix}-{i:02d}", text=text, claim_type=ctype,
                                        evidence_ids=[e.evidence_id], paragraph=para, origin="template",
                                        stage="template"))
@@ -197,7 +226,7 @@ def naive_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: PipelineConfi
     return draft
 
 
-STAGED_GROUPS = (("expert", ("expert",)), ("bewoners", ("bewoners",)), ("data", ("data",)))
+STAGED_GROUPS = (("data", ("data",)), ("expert", ("expert",)), ("bewoners", ("bewoners",)))
 
 
 def staged_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: PipelineConfig) -> SectionDraft:
@@ -218,7 +247,7 @@ def staged_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: PipelineConf
             for c in new:
                 c.paragraph = para   # citations are left exactly as the model gave them; the verifier judges them
             findings.extend(new)
-    synth_items = [e for e in sel.items if e.perspective in ("cross", "reference")]
+    synth_items = [e for e in sel.items if e.perspective in ("cross", "reference", "context")]
     finding_lines = "\n".join(f"- {c.text} [{', '.join(c.evidence_ids)}]" for c in findings) or "(geen)"
     user = render(cfg.prompt_version, "staged_synthesis", section=pack.section,
                   case_label=cfg.case_label or pack.case_id, findings=finding_lines,
@@ -235,15 +264,39 @@ def staged_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: PipelineConf
     return draft
 
 
+SINGLE_CALL_SECTIONS = {CONCLUSIES: "conclusions", AANLEIDING: "aanleiding"}
+
+
+def single_call_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: PipelineConfig, prompt: str) -> SectionDraft:
+    """Conclusies / Aanleiding: one call with a section-specific prompt."""
+    from .prompts import PROMPTS_DIR
+    draft = _new_draft(pack, cfg, provider)
+    if not (PROMPTS_DIR / cfg.prompt_version / f"{prompt}.txt").exists():
+        draft.errors.append(f"Promptversie {cfg.prompt_version} heeft geen prompt '{prompt}' voor '{pack.section}' "
+                            f"(gebruik v2 of later).")
+        return draft
+    sel = select_evidence(pack, cfg)
+    user = render(cfg.prompt_version, prompt, case_label=cfg.case_label or pack.case_id,
+                  unavailable="\n".join(f"- {u}" for u in pack.unavailable) or "- (niets)",
+                  evidence=_evidence_block(sel.items))
+    parsed = _call(provider, cfg, prompt, user, CLAIMS_SCHEMA, sel.items, draft)
+    if parsed:
+        draft.claims = _normalise_claims(parsed.get("claims", []), _prefix(pack.section), 1, prompt)
+    return draft
+
+
 def run_pipeline(pack: EvidencePack, cfg: PipelineConfig, provider: Optional[LLMProvider] = None) -> SectionDraft:
     if not pack.items:
         d = _new_draft(pack, cfg, provider)
-        d.errors.append(f"Geen bewijsstukken voor '{pack.section}': er wordt niets gegenereerd (UC2 alternate flow).")
+        hint = (" Voeg notities van de soort 'Projectcontext' toe (Onderzoekersnotities)." if pack.section == AANLEIDING else "")
+        d.errors.append(f"Geen bewijsstukken voor '{pack.section}': er wordt niets gegenereerd (UC2 alternate flow).{hint}")
         return d
     if cfg.pipeline_id == "template":
         return template_pipeline(pack, cfg)
     if provider is None:
         raise ValueError(f"pipeline {cfg.pipeline_id!r} needs a model provider")
+    if pack.section in SINGLE_CALL_SECTIONS:
+        return single_call_pipeline(pack, provider, cfg, SINGLE_CALL_SECTIONS[pack.section])
     if cfg.pipeline_id == "naive":
         return naive_pipeline(pack, provider, cfg)
     if cfg.pipeline_id == "staged":

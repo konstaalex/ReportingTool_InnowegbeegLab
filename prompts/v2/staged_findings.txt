@@ -1,0 +1,9 @@
+Onderdeel: resultaten voor het thema "$section" in $case_label.
+Stap 1 van 2: schrijf alleen BEVINDINGEN uit het perspectief "$perspective".
+
+Schrijf 2 tot 4 bevindingen. Kies de bewijsstukken die het meest zeggen over dit thema: duidelijke lage of hoge scores, grote aandelen, de uitkomst van een getoetste vuistregel, en wat door meerdere mensen genoemd wordt. Noem bij bewonerscijfers de groep. Elke bevinding verwijst naar de bewijsstukken waar ze op steunt.
+
+Bewijsstukken:
+$evidence
+
+JSON-schema: {"findings": [{"text": "...", "type": "bevinding", "evidence_ids": ["..."]}]}

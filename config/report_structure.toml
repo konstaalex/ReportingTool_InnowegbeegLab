@@ -1,0 +1,208 @@
+# Structure of an InnoBeweegLab Wijkscan report, as the renderer builds it.
+#
+# Derived from the structure (not the content) of the human Wijkscan report
+# Euterpepark Oss (June 2026): chapter order, the place of every map, chart and
+# photo, the per-theme pattern, the appendices. No findings or prose from that
+# confidential report are stored here. docs/report-structure.md explains each
+# element and where its content comes from.
+#
+# Sources of content, in the renderer's words:
+#   section:<name>   reviewed claims (or a model run's draft) for that section
+#   method           generated from the case's own evidence (export.report.methode_parts)
+#   image:<id>       an input image (config/images.toml id), placed as-is
+#   overlay:<id>     the measurement check image the tool made for that map
+#   chart:<id>       a chart drawn from survey evidence ([[chart]] below)
+#   photos           photos attached to researcher notes of that section
+#   researcher       written by the researcher (placeholder when empty)
+
+version = "2026-10-23"
+page = "A4-landscape"
+
+[house]
+organisation = "InnoBeweegLab"
+accent = "#FE5C01"           # house orange (measured from the report)
+text = "#000000"
+grey = "#5F5F5F"
+heading_font = "Trebuchet MS"
+body_font = "Arial"
+chart_font = "Calibri"
+logo = ""                    # path to the organisation's logo file, when InnoBeweegLab supplies it
+partner_logo = ""            # e.g. the municipality's logo, when supplied
+cover_photo = ""             # optional; otherwise the first photo note marked for the cover, or none
+authors = "[auteurs]"
+layout_by = "[vormgeving]"
+contact = ["[e-mail]", "[telefoon]", "[website]", "[adres]"]
+# Fixed figures of the house template, shown in the Methode chapter when the files exist
+# (paths absolute or relative to config/). In the report: the BVO model and the perspectives
+# figure. Add them when InnoBeweegLab supplies the image files, e.g.:
+#   method_figures = [{path = "house/bvo-model.png", caption = "BVO-model"},
+#                     {path = "house/perspectieven.png", caption = "Perspectieven InnoBeweegLab"}]
+method_figures = []
+copyright_note = "Niets uit dit document mag worden verveelvoudigd en/of openbaar worden gemaakt zonder voorafgaande schriftelijke toestemming van de organisatie."
+
+# Chapters in order. 'number_figures' = figures here count in the running
+# "Afbeelding n" / "Figuur n" numbering, as in the report.
+[[chapter]]
+id = "samenvatting"
+title = "SAMENVATTING"
+source = "summary"
+
+[[chapter]]
+id = "aanleiding"
+title = "AANLEIDING"
+source = "section:Aanleiding"
+optional = true              # only when project-context notes were drafted and reviewed
+
+[[chapter]]
+id = "methode"
+title = "METHODE"
+source = "method"
+subsections = ["Dataperspectief", "Expertperspectief", "Bewonersperspectief"]
+figures = ["overlay:basisbehoefte"]     # the study area and its neighbourhoods
+rule_box = true                         # the RIVM rules with the map that tests each
+
+[[chapter]]
+id = "resultaten"
+title = "RESULTATEN"
+source = "section:Algemeen"             # demographics and respondents
+full_page_images = ["image:demografie_1", "image:demografie_2"]
+expert_sunburst_note = true             # "the expert results are shown in the sunburst in Bijlage 2"
+
+# The six themes, each with the figures in the order the report places them.
+[[theme]]
+name = "Sporten"
+figures = ["image:speelkaart", "chart:genoeg_sportplekken", "photos"]
+
+[[theme]]
+name = "Actieve mobiliteit"
+figures = ["image:basisbehoefte", "chart:fijne_elementen", "photos"]
+
+[[theme]]
+name = "Formeel spelen"
+figures = ["photos"]
+
+[[theme]]
+name = "Informeel spelen"
+figures = ["photos"]
+
+[[theme]]
+name = "Ontmoeten"
+figures = ["chart:behoefte_ontmoeten", "photos"]
+
+[[theme]]
+name = "Uitstraling"
+figures = ["chart:uitstraling_nodig", "photos"]
+
+[[chapter]]
+id = "conclusies"
+title = "CONCLUSIES"
+source = "section:Conclusies"
+per_theme = true             # then one paragraph per theme, theme name in bold orange
+
+[[chapter]]
+id = "aanbevelingen"
+title = "AANBEVELINGEN"
+source = "researcher"
+# skeleton the researcher fills in (approved 'aanbeveling' claims are placed under their theme)
+intro_headings = ["Co-creatie", "Tijdelijke voorzieningen", "Nudging en wayfinding"]
+per_theme_heading = "Concreet voor {case}"
+
+[[chapter]]
+id = "bronnen"
+title = "BRONNENLIJST"
+source = "sources"           # RIVM + data sources of the images + literature notes
+
+[[chapter]]
+id = "bijlage1"
+title = "BIJLAGE 1"
+source = "maps"
+# one page per map; the RIVM rules the map tests are printed beside it
+maps = ["beweegstructuur", "voorzieningen", "speelkaart", "beweeggroen", "basisbehoefte", "sportaccommodatie"]
+definitions_for = "beweegstructuur"
+
+[[chapter]]
+id = "bijlage2"
+title = "BIJLAGE 2"
+source = "image:sunburst"
+
+[[chapter]]
+id = "bijlage3"
+title = "BIJLAGE 3 · HERLEIDBAARHEID"
+source = "evidence_map"      # tool-specific: every claim -> evidence -> source file
+
+# Per case: names used on the cover and in titles ({city}, {area}, {focus}).
+[case."euterpepark-oss"]
+city = "Oss"
+area = "Euterpepark"
+focus = "het Euterpepark"
+municipality = "Gemeente Oss"
+
+# Location-type definitions printed next to the structure map (Bijlage 1).
+# InnoBeweegLab's own wording; fill in from the house template.
+[definitions]
+"Bovenwijkse plek" = ""
+"Buurtplek" = ""
+"Steunplek" = ""
+"Ontmoetingsplek" = ""
+
+# Data sources per image, for the Bronnenlijst (as printed on the images or known to the team).
+[image_sources]
+demografie_1 = ["Allecijfers.nl", "Sportenbewegenincijfers.nl", "Buurtatlas.nl", "Atlasleefomgeving.nl/kaarten"]
+demografie_2 = ["Allecijfers.nl", "Sportenbewegenincijfers.nl", "Buurtatlas.nl", "Atlasleefomgeving.nl/kaarten"]
+
+# ---------------------------------------------------------------- charts
+# Grouped bar charts drawn from survey evidence, one bar per respondent group
+# (first group in the house orange, second in black), as in the report.
+#   question = survey question id (config/survey_mapping.toml)
+#   options  = [match text, label shown]; order as listed; match = start of the answer text
+#   measure  = "count" or "pct"
+
+[chart_groups]
+"65+ en toekomstige bewoners" = "65+ / Toekomstige bewoners"
+"Jongvolwassenen" = "Jongvolwassenen"
+
+[[chart]]
+id = "genoeg_sportplekken"
+title = "Zijn er genoeg sportplekken voor iedere leeftijdsgroep?"
+question = "sport_leeftijd"
+measure = "count"
+options = [
+  ["Ja", "Ja, er zijn voldoende sportplekken"],
+  ["Er zijn voornamelijk sportplekken voor kinderen", "Voornamelijk sportplekken voor kinderen (tot 18 jaar)"],
+  ["Er zijn voornamelijk sportplekken voor volwassenen", "Voornamelijk sportplekken voor volwassenen (18 t/m 64 jaar)"],
+  ["Er zijn voornamelijk sportplekken voor ouderen", "Voornamelijk sportplekken voor ouderen (65-plussers)"],
+  ["Nee", "Nee, er zijn te weinig sportplekken"],
+]
+
+[[chart]]
+id = "fijne_elementen"
+title = "Fijne elementen in de eigen buurt"
+question = "fijn"
+measure = "count"
+vertical_labels = true
+options = [
+  ["Functionele wandelpaden", "Functionele wandelpaden"],
+  ["Recreatieve wandelpaden", "Recreatieve wandelpaden"],
+  ["Fietspaden", "Fietspaden"],
+  ["Straatverlichting", "Straatverlichting"],
+  ["Openbare sport- of beweegvoorzieningen", "Openbare sport- of beweegvoorzieningen"],
+  ["Sociale veiligheid", "Sociale veiligheid"],
+]
+
+[[chart]]
+id = "behoefte_ontmoeten"
+title = "Behoefte aan meer mogelijkheden om mensen te ontmoeten in de buurt?"
+question = "ontmoeten_behoefte"
+measure = "pct"
+options = [["Ja", "Ja"], ["Nee", "Nee"]]
+
+[[chart]]
+id = "uitstraling_nodig"
+title = "Wat heeft {focus} nodig om een goede uitstraling te creëren?"
+question = "uitstraling_nodig"
+measure = "count"
+options = [
+  ["Groen en bomen", "Groen en bomen in de openbare ruimte"],
+  ["Goede straatverlichting", "Goede straatverlichting"],
+  ["Goed onderhoud", "Goed onderhoud van straten en pleinen"],
+]

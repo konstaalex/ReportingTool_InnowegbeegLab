@@ -11,7 +11,7 @@
 cases = ["passewaaij-tiel"]
 sections = ["Sporten", "Actieve mobiliteit", "Formeel spelen", "Informeel spelen", "Ontmoeten", "Uitstraling"]
 model = "local_qwen7b"
-prompt_version = "v1"
+prompt_version = "v2"          # v1 kept unchanged for reproducibility of earlier runs
 temperature = 0.2
 seeds = [42, 43, 44]          # repeats: LLM output is stochastic (arXiv:2509.24086)
 

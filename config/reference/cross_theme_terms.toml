@@ -1,0 +1,74 @@
+# Factors that recur across themes in Wijkscan/Buurtscan reports (the BVO
+# "randvoorwaarden": lighting, safety, maintenance, greenery, seating, ...).
+#
+# For the Conclusies section the evidence builder counts, per term, in which
+# themes it appears in (a) coded answers of residents and stakeholders, with
+# their counts, (b) expert remarks and (c) researcher notes. Only terms that
+# appear in two or more themes become evidence. This is a transparent keyword
+# count, not interpretation: the statement says so, and the researcher can
+# adjust the list here.
+#
+# patterns: lower-case word beginnings ("verlicht" matches "verlichting",
+# "verlichte"); matched at the start of a word only.
+
+version = "2026-10-23"
+
+[[term]]
+id = "verlichting"
+label = "verlichting"
+patterns = ["verlicht", "straatverlicht", "lantaarn", "donker"]
+
+[[term]]
+id = "veiligheid"
+label = "(sociale) veiligheid"
+patterns = ["veilig", "onveilig", "sociale controle", "sociale veiligheid", "hangjongeren"]
+
+[[term]]
+id = "verkeer"
+label = "verkeersveiligheid en oversteken"
+patterns = ["oversteek", "verkeer", "hard rijden", "snelheid", "drukke weg", "drukke straat"]
+
+[[term]]
+id = "onderhoud"
+label = "onderhoud en staat van voorzieningen"
+patterns = ["onderhoud", "onderhouden", "verouderd", "gedateerd", "kapot", "losliggend", "tegels", "wortels"]
+
+[[term]]
+id = "groen"
+label = "groen"
+patterns = ["groen", "bomen", "boom", "beplanting", "natuur", "bloemen"]
+
+[[term]]
+id = "schaduw"
+label = "schaduw"
+patterns = ["schaduw"]
+
+[[term]]
+id = "zitplekken"
+label = "zitplekken"
+patterns = ["bank", "bankje", "zitplek", "zitgelegenheid", "picknick"]
+
+[[term]]
+id = "toegankelijkheid"
+label = "toegankelijkheid"
+patterns = ["toegankelijk", "rolstoel", "rollator", "beperking", "drempel"]
+
+[[term]]
+id = "netheid"
+label = "netheid"
+patterns = ["afval", "zwerfvuil", "vuil", "schoon", "hondenpoep", "prullenbak"]
+
+[[term]]
+id = "ouderen"
+label = "voorzieningen voor ouderen"
+patterns = ["ouderen", "senioren", "jeu de boules", "beweegtuin"]
+
+[[term]]
+id = "jongeren"
+label = "voorzieningen voor jongeren"
+patterns = ["jongeren", "tieners", "hangplek"]
+
+[[term]]
+id = "activiteiten"
+label = "activiteiten en programmering"
+patterns = ["activiteit", "programmering", "evenement", "festiviteit"]

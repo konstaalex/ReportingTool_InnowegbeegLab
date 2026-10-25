@@ -28,6 +28,12 @@ def list_models() -> dict[str, dict]:
     return dict(load_config("models.toml").get("model", {}))
 
 
+def selected_models(kind: str = "drafting") -> list[str]:
+    """The models compared in SQ3 ([selection] in models.toml), in order; only ids that exist."""
+    cfg = load_config("models.toml")
+    return [m for m in cfg.get("selection", {}).get(kind, []) if m in cfg.get("model", {})]
+
+
 def validate_model_config(model_id: str, target_ram_gb: Optional[float] = None) -> list[str]:
     """Problems that should stop a run BEFORE it starts (FR14, NFR5)."""
     cfg_all = load_config("models.toml")

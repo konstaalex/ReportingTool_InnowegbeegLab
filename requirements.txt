@@ -4,5 +4,7 @@ python-docx>=1.1      # demografie .docx ingestion + .docx export
 Pillow>=10.1          # images
 numpy>=1.26           # map measurement
 scipy>=1.11           # map measurement (regions, alignment)
+matplotlib>=3.8       # report charts (Figuur n), drawn from survey evidence
+pdfplumber>=0.11      # evaluation: reading the original report (PDF) - never a drafting input
 streamlit>=1.32       # review UI only; core runs without it
 pytest>=8.0           # optional; tests also run with `python -m unittest`

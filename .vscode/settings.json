@@ -1,0 +1,26 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.terminal.activateEnvironment": true,
+  "python.analysis.extraPaths": ["src"],
+
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": ["tests"],
+
+  "terminal.integrated.env.osx": {
+    "PYTHONPATH": "${workspaceFolder}/src",
+    "INNO_WORKSPACE": "workspace",
+    "DATA": "${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/newDataSender",
+    "OSS": "${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/Perspectieven Oss",
+    "GOLD": "${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/gold/oss_demografie_readings.toml"
+  },
+
+  "files.exclude": {
+    "**/__pycache__": true,
+    "**/.DS_Store": true
+  },
+  "search.exclude": {
+    "workspace/**": true,
+    ".venv/**": true
+  }
+}

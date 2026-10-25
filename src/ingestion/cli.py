@@ -93,7 +93,31 @@ def main(argv: list[str] | None = None) -> int:
     ws_cmd.add_argument("--case-id", required=True)
     ws_cmd.add_argument("--label", required=True)
 
+    nt_cmd = sub.add_parser("notes-template", help="Write an empty researcher-notes workbook (Excel) to fill in")
+    nt_cmd.add_argument("path", nargs="?", default="Onderzoekersnotities.xlsx")
+    nt_cmd.add_argument("--force", action="store_true", help="overwrite an existing file")
+
+    in_cmd = sub.add_parser("ingest-notes", help="Add a researcher-notes workbook to a case in a workspace")
+    in_cmd.add_argument("path")
+    in_cmd.add_argument("--out", default="workspace", help="workspace directory")
+    in_cmd.add_argument("--case-id", required=True)
+
     args = parser.parse_args(argv)
+
+    if args.command == "notes-template":
+        from .parsers.notes_parser import write_template
+        try:
+            print(f"Template written: {write_template(args.path, overwrite=args.force)}")
+        except FileExistsError as exc:
+            print(exc, file=sys.stderr)
+            return 1
+        return 0
+
+    if args.command == "ingest-notes":
+        from app.services import Workspace
+        res = Workspace(args.out).ingest_notes(args.path, args.case_id)
+        print(json.dumps(res, indent=2, ensure_ascii=False))
+        return 0 if not res["problems"] else 1
 
     if args.command == "ingest-wijkscan":
         from app.services import Workspace

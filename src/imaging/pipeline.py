@@ -7,7 +7,9 @@ only when a vision provider is given; without one, those images are listed as
 'needs a vision model' instead of being skipped silently.
 
 Records produced (perspective 'data', all citable like spreadsheet cells):
-  image_measurement   one per map x area ('onderzoeksgebied' or a neighbourhood)
+  image_measurement   one per map x area ('onderzoeksgebied' or a neighbourhood);
+                      measure_kind 'shares' (coloured buildings), 'counts' (markers)
+                      or 'coverage' (share of homes inside a distance zone)
   image_reading       one per value read from an infographic (status starts 'unconfirmed')
   image_observation   one per sentence a model wrote about a symbol map (always unconfirmed)
 """
@@ -40,14 +42,15 @@ def _case_cfg(case_id: str) -> dict:
 
 def _measurement_records(rec: SourceRecord, cfg: dict, m: maps.MapMeasurement, kind: str) -> list[SourceRecord]:
     out = []
-    study_total, study_only = m.total, kind == "shares"
+    study_total, study_only = m.total, kind in ("shares", "coverage")
     if kind == "counts" and m.per_region:
         # markers inside the neighbourhoods only (the map also shows the surroundings)
         study_total = {k: sum(c.get(k, 0) for c in m.per_region.values()) for k in m.total}
         study_only = True
     areas = [(STUDY_AREA, study_total)] + sorted(m.per_region.items())
     for area, counts in areas:
-        locator = f"{cfg.get('title', rec.text)} › {area} ({'kleuraandeel' if kind == 'shares' else 'telling'})"
+        what = {"shares": "kleuraandeel", "counts": "telling", "coverage": "dekking afstandszone"}[kind]
+        locator = f"{cfg.get('title', rec.text)} › {area} ({what})"
         extra = {
             "record_kind": "image_measurement", "measure_kind": kind, "image_id": cfg.get("id"),
             "title": cfg.get("title"), "measure": cfg.get("measure"), "area": area,
@@ -60,6 +63,11 @@ def _measurement_records(rec: SourceRecord, cfg: dict, m: maps.MapMeasurement, k
         if kind == "shares":
             extra["shares"] = {k: (round(v, 4) if v is not None else None) for k, v in m.shares(counts).items()}
             extra["classified_pixels"] = m.classified_pixels(counts)
+        elif kind == "coverage":
+            homes_pct, area_pct = maps.coverage_pct(counts)
+            extra["coverage"] = {"homes_pct": homes_pct, "area_pct": area_pct, "zone": cfg.get("zone"),
+                                 "homes_px": counts.get("homes", 0), "area_px": counts.get("area", 0)}
+            extra["reference_map"] = m.params.get("reference")
         out.append(SourceRecord(
             id=SourceRecord.make_id("data", rec.source_file, None, locator), perspective="data",
             source_file=rec.source_file, sheet=None, locator=locator, theme=None,
@@ -80,9 +88,9 @@ def analyse_case_images(store: SourceStore, case_id: str, out_dir: str | Path,
     template = None
     ref_id = case_cfg.get("region_reference")
     if ref_id and ref_id in by_id:
-        ref_img = maps.load_rgb(by_id[ref_id].extra["absolute_path"])
-        reg_img, regions, _ = maps.detect_regions(ref_img, seeds)
-        template = (ref_img, reg_img, {r.region_id: r.name or f"regio {r.region_id}" for r in regions})
+        ref_cfg = next((c for c in load_config("images.toml").get("image", []) if c.get("id") == ref_id), {})
+        template = maps.RegionTemplate.from_map(ref_id, by_id[ref_id].extra["absolute_path"],
+                                                ref_cfg.get("legend", []), seeds)
 
     new_records: list[SourceRecord] = []
     summary: dict = {"case_id": case_id, "images": {}}
@@ -113,6 +121,17 @@ def analyse_case_images(store: SourceStore, case_id: str, out_dir: str | Path,
                     item["model_reading"] = "needs a vision model" if vision_provider is None else "described"
                     if vision_provider is not None:
                         new_records += _observations(rec, cfg, vision_provider, list(seeds), out_dir)
+            elif kind == "map_zones":
+                if template is None:
+                    item["status"] = "not measured: the case has no region_reference map (config/images.toml)"
+                else:
+                    m = maps.measure_zone_coverage(path, cfg["legend"], cfg["zone"], template,
+                                                   overlay_to=out_dir / f"{cfg['id']}_overlay.png")
+                    if m.total:
+                        new_records += _measurement_records(rec, cfg, m, "coverage")
+                    item.update({"status": "measured" if m.total else "not measured", "warnings": m.warnings,
+                                 "overlay": m.overlay_path, "regions": list(m.per_region)})
+                    (out_dir / f"{cfg['id']}_measurement.json").write_text(json.dumps(m.to_dict(), indent=2, ensure_ascii=False))
             elif kind == "infographic":
                 if vision_provider is None:
                     item["status"] = "needs a vision model (python -m imaging.cli analyse --vision-model ...)"

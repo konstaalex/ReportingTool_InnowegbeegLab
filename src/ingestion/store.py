@@ -31,6 +31,14 @@ class SourceStore:
         for r in records:
             self.add(r)
 
+    def remove_where(self, predicate) -> int:
+        """Drop every record for which predicate(record) is true; returns how many."""
+        keep = [r for r in self._records if not predicate(r)]
+        removed = len(self._records) - len(keep)
+        self._records = keep
+        self._by_id = {r.id: r for r in keep}
+        return removed
+
     def __len__(self) -> int:
         return len(self._records)
 

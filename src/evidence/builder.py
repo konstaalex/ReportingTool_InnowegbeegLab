@@ -1,8 +1,10 @@
-"""Build Evidence items for one Buurtscan case. Pure Python, no model.
+"""Build Evidence items for one Buurtscan/Wijkscan case. Pure Python, no model.
 
     packs = build_case_evidence(store, "passewaaij-tiel")
     packs["Sporten"]      # EvidencePack for the Sporten section
     packs["Algemeen"]     # context: respondents, demografie, general quotes
+    packs["Aanleiding"]   # project context from researcher notes (may be empty)
+    packs["Conclusies"]   # cross-theme: per-theme headline figures, rule outcomes, recurring factors
 
 Every number in a statement is computed here and also stored in `data`, so
 the verifier can check model claims against it. Percentages are of the
@@ -19,9 +21,8 @@ from ingestion.config import config_fingerprint, load_config
 from ingestion.models import THEMES, SourceRecord
 from ingestion.store import SourceStore
 
-from .models import GENERAL_CODE, PERSPECTIVE_CODES, THEME_CODES, Evidence, EvidencePack
-
-GENERAL = "Algemeen"
+from .models import (AANLEIDING, CONCLUSIES, GENERAL, GENERAL_CODE, NOTE_CODE, PERSPECTIVE_CODES, SECTION_CODES,
+                     THEME_CODES, Evidence, EvidencePack)
 SCALE_NL = {1: "heel slecht", 2: "slecht", 3: "neutraal", 4: "goed", 5: "uitstekend"}
 LIKERT_POSITIVE = ("belangrijk", "heel belangrijk")
 
@@ -48,9 +49,9 @@ class _Ids:
     def __init__(self) -> None:
         self.counters: dict[str, int] = defaultdict(int)
 
-    def next(self, perspective: str, section: str) -> str:
-        code = THEME_CODES.get(section, GENERAL_CODE)
-        key = f"{PERSPECTIVE_CODES[perspective]}-{code}"
+    def next(self, perspective: str, section: str, code: Optional[str] = None) -> str:
+        sec = SECTION_CODES.get(section, GENERAL_CODE)
+        key = f"{code or PERSPECTIVE_CODES[perspective]}-{sec}"
         self.counters[key] += 1
         return f"{key}-{self.counters[key]:02d}"
 
@@ -194,6 +195,10 @@ def survey_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mappin
     qcfg = {q["id"]: q for q in mapping["question"]}
     groups = _group_answers(records)
 
+    def add(sec: str, ev: Evidence) -> None:
+        ev.data.setdefault("question_id", qid)
+        out[sec].append(ev)
+
     for qid, rs in groups.items():
         q = qcfg[qid]
         kind = rs[0].extra["question_kind"]
@@ -210,7 +215,7 @@ def survey_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mappin
                 for s in r.extra["selected"]:
                     counts[str(s)] = counts.get(str(s), 0) + 1
             parts = ", ".join(f"{k}: {v} ({pct(v, n)}%)" for k, v in counts.items())
-            out[GENERAL].append(Evidence(
+            add(GENERAL, Evidence(
                 evidence_id=ids.next("bewoners", GENERAL), case_id=case_id, themes=[], perspective="bewoners",
                 kind="respondents",
                 statement=(f"De bewonersvragenlijst telt {n_respondents} respondenten. Woonbuurt "
@@ -225,7 +230,7 @@ def survey_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mappin
             values = [int(s) for r in closed for s in r.extra["selected"] if isinstance(s, (int, float))]
             mean = statistics.mean(values)
             dist = {i: values.count(i) for i in range(1, 6)}
-            out[section].append(Evidence(
+            add(section, Evidence(
                 evidence_id=ids.next("bewoners", section), case_id=case_id, themes=[section], perspective="bewoners",
                 kind="rating",
                 statement=(f"Bewoners geven het {label} gemiddeld een {nl_num(mean)} op een schaal van 1 tot 5 "
@@ -244,7 +249,7 @@ def survey_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mappin
                     counts[lvl] = counts.get(lvl, 0) + 1
             k_pos = sum(v for lvl, v in counts.items() if lvl.lower() in LIKERT_POSITIVE)
             p = pct(k_pos, n)
-            out[section].append(Evidence(
+            add(section, Evidence(
                 evidence_id=ids.next("bewoners", section), case_id=case_id,
                 themes=[section] if section != GENERAL else [], perspective="bewoners", kind="likert",
                 statement=(f"{p}% van de bewoners ({k_pos} van {n}) vindt {label} belangrijk of heel belangrijk."),
@@ -265,7 +270,7 @@ def survey_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mappin
             else:
                 parts = "; ".join(f"'{o}' {pct(v, n)}% ({v})" for o, v in ranked)
                 stmt = f"Vraag over {label}, meerdere antwoorden mogelijk (n = {n}): {parts}."
-            out[section].append(Evidence(
+            add(section, Evidence(
                 evidence_id=ids.next("bewoners", section), case_id=case_id,
                 themes=[section] if section != GENERAL else [], perspective="bewoners", kind=kind,
                 statement=stmt,
@@ -285,7 +290,7 @@ def survey_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mappin
                 theme = rs_o[0].extra.get("option_themes", {}).get(option)
                 sec = theme if theme else GENERAL
                 k = len(rs_o)
-                out[sec].append(Evidence(
+                add(sec, Evidence(
                     evidence_id=ids.next("bewoners", sec), case_id=case_id, themes=[sec] if theme else [],
                     perspective="bewoners", kind="option_share",
                     statement=(f"{pct(k, n)}% van de bewoners ({k} van {n}) {verb} '{option}' "
@@ -295,7 +300,8 @@ def survey_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mappin
                 ))
 
         # open text attached to this question (Omdat:/Toelichting:/Anders/open-ended)
-        out[section].extend(_quotes(rs, case_id, section, ids, label))
+        for ev in _quotes(rs, case_id, section, ids, label):
+            add(section, ev)
     return out
 
 
@@ -357,6 +363,11 @@ def tally_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mapping
             continue
         q = qcfg[r.extra["question_id"]]
         group = _short_group(r.extra["group"])
+
+        def add(sec: str, ev: Evidence, _qid: str = q["id"]) -> None:
+            ev.data.setdefault("question_id", _qid)
+            out[sec].append(ev)
+
         counts: dict[str, int] = dict(r.extra["counts"])
         open_opts = set(r.extra.get("open_options", []))
         closed = {k: v for k, v in counts.items() if k not in open_opts}
@@ -369,7 +380,7 @@ def tally_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mapping
         if q["id"] == "woonbuurt":
             n = sum(closed.values())
             parts = ", ".join(f"{k}: {v} ({pct(v, n)}%)" for k, v in closed.items())
-            out[GENERAL].append(Evidence(evidence_id=ids.next("bewoners", GENERAL), themes=[], kind="respondents",
+            add(GENERAL, Evidence(evidence_id=ids.next("bewoners", GENERAL), themes=[], kind="respondents",
                                          statement=f"Groep '{group}': {n} respondenten. Woonbuurt: {parts}.",
                                          data={"group": group, "n_respondents": n, "counts": closed,
                                                "pct": {k: pct(v, n) for k, v in closed.items()}},
@@ -382,7 +393,7 @@ def tally_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mapping
                 continue
             mean = sum(k * v for k, v in vals.items()) / n
             low, high = vals.get(1, 0) + vals.get(2, 0), vals.get(4, 0) + vals.get(5, 0)
-            out[section].append(Evidence(
+            add(section, Evidence(
                 evidence_id=ids.next("bewoners", section), themes=[section], kind="rating",
                 statement=(f"Groep '{group}' geeft het {label} gemiddeld een {nl_num(mean)} op een schaal van 1 tot 5 "
                            f"(n = {n}); {pct(low, n)}% geeft een 1 of 2, {pct(high, n)}% een 4 of 5."),
@@ -394,7 +405,7 @@ def tally_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mapping
             if not n:
                 continue
             k_pos = sum(v for k, v in closed.items() if _clean_option(k).lower() in LIKERT_POSITIVE)
-            out[section].append(Evidence(
+            add(section, Evidence(
                 evidence_id=ids.next("bewoners", section), themes=[section] if section != GENERAL else [],
                 kind="likert",
                 statement=f"In groep '{group}' vindt {pct(k_pos, n)}% ({k_pos} van {n}) {label} belangrijk of heel belangrijk.",
@@ -408,7 +419,7 @@ def tally_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mapping
             for option, k in sorted(closed.items(), key=lambda kv: -kv[1]):
                 theme = r.extra.get("option_themes", {}).get(option)
                 sec = theme or GENERAL
-                out[sec].append(Evidence(
+                add(sec, Evidence(
                     evidence_id=ids.next("bewoners", sec), themes=[sec] if theme else [], kind="option_share",
                     statement=(f"In groep '{group}' {q.get('verb', 'kiest')} {pct(k, n)}% ({k} van de {n} respondenten) "
                                f"'{option}' ({label}, meerdere antwoorden mogelijk)."),
@@ -421,7 +432,7 @@ def tally_evidence(records: list[SourceRecord], case_id: str, ids: _Ids, mapping
             ranked = sorted(closed.items(), key=lambda kv: -kv[1])
             parts = "; ".join(f"'{o}' {pct(v, n)}% ({v})" for o, v in ranked)
             extra_txt = ", meerdere antwoorden mogelijk, percentage van alle respondenten in de groep" if kind == "multi" else ""
-            out[section].append(Evidence(
+            add(section, Evidence(
                 evidence_id=ids.next("bewoners", section), themes=[section] if section != GENERAL else [], kind=kind,
                 statement=f"Groep '{group}', vraag over {label}{extra_txt} (n = {n}): {parts}.",
                 data={"group": group, "n": n, "counts": closed, "pct": {o: pct(v, n) for o, v in closed.items()}},
@@ -474,15 +485,31 @@ def image_evidence(records: list[SourceRecord], case_id: str, ids: _Ids,
             where = "op de hele kaart (ook buiten het onderzoeksgebied)" if whole_map else (
                 "in het onderzoeksgebied" if area == "onderzoeksgebied" else f"in {area}")
             rules = ", ".join(x.get("rules", []))
-            tests_rule = x["measure_kind"] == "shares"   # coloured buildings = the rule's own outcome per home
+            # coloured buildings and homes inside a distance zone are the rule's own outcome per home;
+            # a count of locations is not
+            tests_rule = x["measure_kind"] in ("shares", "coverage")
             if rules and tests_rule:
                 rule_txt = f" Toetst RIVM-vuistregel {rules}."
             elif rules:
-                rule_txt = (f" Hoort bij RIVM-vuistregel {rules}, maar het aantal locaties toetst de afstandsregel niet "
-                            f"(de afstandszones zijn niet per buurt gemeten).")
+                rule_txt = f" Hoort bij RIVM-vuistregel {rules}, maar een aantal locaties toetst de afstandsregel niet."
             else:
                 rule_txt = ""
-            if x["measure_kind"] == "shares":
+            if x["measure_kind"] == "coverage":
+                cov = x["coverage"]
+                hp, ap = cov.get("homes_pct"), cov.get("area_pct")
+                ref = x.get("reference_map") or "referentiekaart"
+                if hp is None:
+                    stmt = (f"{x['title']} ({x['measure']}): {where} staan op de {ref}kaart geen woningen; "
+                            f"{ap}% van het gebied ligt binnen de zone (aandeel kaartoppervlak, indicatief).{rule_txt}")
+                else:
+                    stmt = (f"{x['title']} ({x['measure']}): {where} ligt {hp}% van de woningen binnen de zone en "
+                            f"{100 - hp}% erbuiten (aandeel bebouwd oppervlak van de woningen op de {ref}kaart; "
+                            f"indicatief).{rule_txt}")
+                data = {"area": area, "homes_pct": hp, "homes_outside_pct": None if hp is None else 100 - hp,
+                        "area_pct": ap, "zone": cov.get("zone"), "rules": x.get("rules", []), "tests_rule": True,
+                        "method": x["method"], "warnings": x.get("warnings", [])}
+                sal = 2.5 if area == "onderzoeksgebied" else 1.0 + (100 - (hp if hp is not None else ap or 0)) / 50
+            elif x["measure_kind"] == "shares":
                 shares = {k: _pct_or_none(v) for k, v in x["shares"].items()}
                 if all(v is None for v in shares.values()):
                     stmt = f"{x['title']}: {where} staat geen gekleurde bebouwing (geen gegevens voor {x['measure']})."
@@ -539,6 +566,205 @@ def image_evidence(records: list[SourceRecord], case_id: str, ids: _Ids,
                                          perspective="data", kind=ekind, statement=stmt, data=data,
                                          source_record_ids=[r.id], salience=sal, method=x.get("extraction_method", "model-assisted")))
     return out, notes
+
+
+# ----------------------------------------------------------------- researcher notes
+
+NOTE_PERSPECTIVE = {"observatie": "expert", "bijeenkomst": "bewoners", "stakeholder": "bewoners",
+                    "context": "context", "literatuur": "context"}
+
+
+def note_evidence(records: list[SourceRecord], case_id: str, ids: _Ids) -> dict[str, list[Evidence]]:
+    """Researcher notes (ingestion.parsers.notes_parser) as citable evidence.
+    Project context goes to the Aanleiding section; everything else to its
+    theme(s), or Algemeen. Notes from the resident meeting or stakeholder talks
+    can contain personal details, so they carry the free-text privacy flag."""
+    out: dict[str, list[Evidence]] = defaultdict(list)
+    for r in records:
+        if r.extra.get("record_kind") != "researcher_note" or not r.text:
+            continue
+        x = r.extra
+        key = x.get("note_type", "onbekend")
+        persp = NOTE_PERSPECTIVE.get(key, "context")
+        src = x.get("source") or "bron niet ingevuld"
+        when = f", {x['date']}" if x.get("date") else ""
+        if key == "context":
+            sections = [AANLEIDING]
+            stmt = f"Projectcontext: {r.text} (bron: {src}{when})."
+        elif key == "literatuur":
+            sections = x.get("themes") or [GENERAL]
+            stmt = f"Literatuur: {r.text} (bron: {src})."
+        else:
+            sections = (x.get("themes") or []) + ([GENERAL] if x.get("general") and x.get("themes") else [])
+            sections = sections or [GENERAL]
+            place = f", {x['place']}" if x.get("place") else ""
+            cnt = f"; {x['count']}× genoemd" if x.get("count") else ""
+            stmt = f"Onderzoekersnotitie ({x.get('note_type_label', 'notitie')}{place}{cnt}): \"{r.text}\" (bron: {src}{when})."
+        themes = [t for t in (x.get("themes") or []) if t in THEME_CODES]
+        for sec in sections:
+            out[sec].append(Evidence(
+                evidence_id=ids.next(persp, sec, code=NOTE_CODE), case_id=case_id, themes=themes if sec in THEME_CODES else [],
+                perspective=persp, kind="note", statement=stmt,
+                data={"note_type": key, "note_type_label": x.get("note_type_label"), "text": r.text,
+                      "place": x.get("place"), "source": x.get("source"), "date": x.get("date"),
+                      "count": x.get("count"), "is_stakeholder": bool(x.get("is_stakeholder")),
+                      "group": x.get("note_type_label") if persp == "bewoners" else None},
+                source_record_ids=[r.id], salience=1.5 + (0.3 * (x.get("count") or 0)),
+                contains_free_text=key in ("bijeenkomst", "stakeholder"),
+                method="researcher note (recorded by the research team)",
+            ))
+    return out
+
+
+# ----------------------------------------------------------------- cross-theme (Conclusies)
+
+def _quoted(statement: str) -> str:
+    m = re.search(r'"(.+)"', statement or "")
+    return m.group(1) if m else ""
+
+
+def _term_text(e: Evidence) -> Optional[str]:
+    """The researcher-/respondent-written words of an evidence item, if any
+    (never the generated framing, which contains group names like '65+')."""
+    if e.kind in ("coded", "quote"):
+        return _quoted(e.statement)
+    if e.kind == "expert_statement":
+        return e.data.get("remark")
+    if e.kind == "expert_remark":
+        return _quoted(e.statement)
+    if e.kind == "note" and e.data.get("note_type") in ("observatie", "bijeenkomst", "stakeholder"):
+        return e.data.get("text")
+    return None
+
+
+def _nl_list(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " en " + items[-1]
+
+
+def recurring_terms(theme_items: dict[str, list[Evidence]], case_id: str, ids: _Ids) -> list[Evidence]:
+    cfg = load_config("reference/cross_theme_terms.toml")
+    out = []
+    rows = []
+    for term in cfg.get("term", []):
+        rx = re.compile(r"(?<!\w)(?:" + "|".join(re.escape(p.lower()) for p in term["patterns"]) + ")", re.I)
+        hits: list[Evidence] = []
+        themes: list[str] = []
+        for theme in THEMES:
+            th = [e for e in theme_items.get(theme, []) if (_term_text(e) and rx.search(_term_text(e)))]
+            if th:
+                themes.append(theme)
+                hits += th
+        if len(themes) < 2:
+            continue
+        coded = [e for e in hits if e.kind == "coded"]
+        quotes = [e for e in hits if e.kind == "quote"]
+        expert = [e for e in hits if e.kind in ("expert_statement", "expert_remark")]
+        notes = [e for e in hits if e.kind == "note"]
+        n_mentions = sum(e.data.get("count", 1) for e in coded + quotes)
+        rows.append((len(themes), n_mentions, term, themes, coded, quotes, expert, notes, hits))
+    rows.sort(key=lambda r: (-r[0], -r[1]))
+    for n_th, n_mentions, term, themes, coded, quotes, expert, notes, hits in rows:
+        parts = []
+        if coded:
+            k = sum(e.data.get("count", 1) for e in coded)
+            parts.append(f"{k}× genoemd in gecodeerde antwoorden van bewoners en stakeholders")
+        if quotes:
+            k = sum(e.data.get("count", 1) for e in quotes)
+            parts.append(f"{k}× in open antwoorden van bewoners")
+        if expert:
+            parts.append(f"in {len(expert)} {'opmerking of stelling' if len(expert) == 1 else 'opmerkingen of stellingen'} "
+                         f"van de experts")
+        if notes:
+            parts.append(f"in {len(notes)} {'onderzoekersnotitie' if len(notes) == 1 else 'onderzoekersnotities'}")
+        n_coded = n_mentions
+        out.append(Evidence(
+            evidence_id=ids.next("cross", CONCLUSIES), case_id=case_id, themes=list(themes), perspective="cross",
+            kind="cross_theme",
+            statement=(f"'{term['label']}' komt terug bij {n_th} thema's ({_nl_list([t.lower() for t in themes])}): "
+                       f"{_nl_list(parts)} (telling van trefwoorden; indicatief)."),
+            data={"term": term["id"], "label": term["label"], "n_themes": n_th, "themes": themes,
+                  "mentions": n_coded, "coded_items": len(coded), "quote_items": len(quotes), "expert_items": len(expert),
+                  "notes": len(notes), "from_evidence": [e.evidence_id for e in hits]},
+            source_record_ids=sorted({rid for e in hits for rid in e.source_record_ids}),
+            salience=1.0 + n_th / 2 + min(n_coded, 30) / 15, method="keyword count (deterministic)",
+        ))
+    return out
+
+
+def cross_theme_evidence(theme_items: dict[str, list[Evidence]], case_id: str, ids: _Ids) -> list[Evidence]:
+    """New cross-theme facts plus the existing headline items of every theme.
+    The headline items keep their own ids (they are the same objects as in
+    the theme packs), so a conclusion cites the original evidence."""
+    new: list[Evidence] = []
+    overall = {t: next((e for e in theme_items.get(t, []) if e.kind == "theme_average"), None) for t in THEMES}
+    overall = {t: e for t, e in overall.items() if e is not None}
+    if len(overall) >= 3:
+        ranked = sorted(overall.items(), key=lambda kv: -kv[1].data["mean"])
+        new.append(Evidence(
+            evidence_id=ids.next("cross", CONCLUSIES), case_id=case_id, themes=list(overall), perspective="expert",
+            kind="cross_theme",
+            statement=("Gemiddelde expertscore per thema (schaal 1 tot 5), van hoog naar laag: "
+                       + "; ".join(f"{t.lower()} {nl_num(e.data['mean'])}" for t, e in ranked) + "."),
+            data={"means": {t: e.data["mean"] for t, e in ranked}, "from_evidence": [e.evidence_id for _, e in ranked]},
+            source_record_ids=sorted({rid for _, e in ranked for rid in e.source_record_ids}), salience=3.0,
+            method="ranking of the theme averages (deterministic)",
+        ))
+    by_group: dict[str, dict[str, Evidence]] = defaultdict(dict)
+    for t in THEMES:
+        for e in theme_items.get(t, []):
+            if e.kind == "rating":
+                by_group[e.data.get("group") or "bewoners"][t] = e
+    for group, per_theme in by_group.items():
+        if len(per_theme) < 3:
+            continue
+        ranked = sorted(per_theme.items(), key=lambda kv: -kv[1].data["mean"])
+        who = "bewoners" if group == "bewoners" else f"groep '{group}'"
+        new.append(Evidence(
+            evidence_id=ids.next("cross", CONCLUSIES), case_id=case_id, themes=list(per_theme), perspective="bewoners",
+            kind="cross_theme",
+            statement=(f"Gemiddeld cijfer van {who} per thema (schaal 1 tot 5), van hoog naar laag: "
+                       + "; ".join(f"{t.lower()} {nl_num(e.data['mean'])} (n = {e.data['n']})" for t, e in ranked) + "."),
+            data={"group": None if group == "bewoners" else group, "means": {t: e.data["mean"] for t, e in ranked},
+                  "n": {t: e.data["n"] for t, e in ranked}, "from_evidence": [e.evidence_id for _, e in ranked]},
+            source_record_ids=sorted({rid for _, e in ranked for rid in e.source_record_ids}), salience=3.0,
+            method="ranking of the resident ratings (deterministic)",
+        ))
+    rule_items, seen = [], set()
+    for t in THEMES:
+        for e in theme_items.get(t, []):
+            key = tuple(e.source_record_ids)
+            if e.kind == "map_measurement" and e.data.get("tests_rule") and key not in seen:
+                seen.add(key)
+                rule_items.append(e)
+    study = [e for e in rule_items if e.data.get("area") == "onderzoeksgebied"]
+    if study:
+        parts = []
+        for e in study:
+            title = e.statement.split(":")[0]
+            if e.data.get("homes_pct") is not None:
+                parts.append(f"{', '.join(e.data['rules'])} – {title}: {e.data['homes_pct']}% van de woningen binnen de zone")
+            elif e.data.get("shares_pct"):
+                sh = ", ".join(f"{v}% '{k}'" for k, v in e.data["shares_pct"].items() if v)
+                parts.append(f"{', '.join(e.data['rules'])} – {title}: {sh}")
+        new.append(Evidence(
+            evidence_id=ids.next("cross", CONCLUSIES), case_id=case_id, themes=sorted({x for e in study for x in e.themes}),
+            perspective="data", kind="cross_theme",
+            statement="Uitkomst van de getoetste RIVM-vuistregels in het onderzoeksgebied (kaartmetingen; indicatief): "
+                      + "; ".join(parts) + ".",
+            data={"rules": sorted({r for e in study for r in e.data.get("rules", [])}),
+                  "homes_pct": {", ".join(e.data["rules"]): e.data.get("homes_pct") for e in study if e.data.get("homes_pct") is not None},
+                  "shares_pct": {", ".join(e.data["rules"]): e.data.get("shares_pct") for e in study if e.data.get("shares_pct")},
+                  "from_evidence": [e.evidence_id for e in study]},
+            source_record_ids=sorted({rid for e in study for rid in e.source_record_ids}), salience=3.0,
+            method="summary of rule-testing map measurements (deterministic)",
+        ))
+    new += recurring_terms(theme_items, case_id, ids)
+    headline = []
+    for t in THEMES:
+        for e in theme_items.get(t, []):
+            if e.kind in ("theme_average", "rating", "comparison") and (e.kind != "theme_average" or e is overall.get(t)):
+                headline.append(e)
+    return new + headline + rule_items
 
 
 # ----------------------------------------------------------------- norms + cross-perspective
@@ -632,6 +858,7 @@ def build_case_evidence(store: SourceStore, case_id: str, n_respondents: Optiona
     norms = norm_evidence(store, case_id, ids, images)
     resident_ratings = {t: survey.get(t, []) + tallies.get(t, []) for t in THEMES}
     cross = comparison_evidence(expert, resident_ratings, case_id, ids)
+    notes = note_evidence(records, case_id, ids)
 
     # images that need a model or were not used, so drafting knows they exist
     for r in records:
@@ -649,14 +876,18 @@ def build_case_evidence(store: SourceStore, case_id: str, n_respondents: Optiona
         "demografie_mapping": config_fingerprint("demografie_mapping.toml"),
         "rivm_rules": config_fingerprint("reference/rivm_vuistregels.toml"),
         "images": config_fingerprint("images.toml"),
-        "builder_version": "2026-10-21b",
+        "cross_theme_terms": config_fingerprint("reference/cross_theme_terms.toml"),
+        "builder_version": "2026-10-23b",
     }
     packs: dict[str, EvidencePack] = {}
-    for section in list(THEMES) + [GENERAL]:
+    for section in list(THEMES) + [GENERAL, AANLEIDING]:
         items: list[Evidence] = []
-        for part in (expert, remarks, survey, tallies, coded, data, images, cross, norms):
+        for part in (expert, remarks, survey, tallies, coded, data, images, notes, cross, norms):
             items.extend(part.get(section, []))
         packs[section] = EvidencePack(case_id, section, items, list(unavailable), dict(built_with))
+    theme_items = {t: packs[t].items for t in THEMES}
+    packs[CONCLUSIES] = EvidencePack(case_id, CONCLUSIES, cross_theme_evidence(theme_items, case_id, ids),
+                                     list(unavailable), dict(built_with))
     return packs
 
 

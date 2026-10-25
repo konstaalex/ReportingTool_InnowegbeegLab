@@ -15,8 +15,11 @@ from dataclasses import dataclass, asdict
 from typing import Iterable, Optional
 
 from drafting.models import DraftClaim, SectionDraft
-from evidence.models import Evidence, EvidencePack
+from evidence.models import AANLEIDING, CONCLUSIES, Evidence, EvidencePack
 from ingestion.config import load_config
+from ingestion.models import THEMES
+
+ANECDOTAL = ("quote", "note")   # a few people's words: never "the residents"
 
 SEVERITY_ORDER = {"unsupported": 3, "weak": 2, "style": 1}
 
@@ -177,20 +180,20 @@ def verify_claim(claim: DraftClaim, section: str, index: dict[str, Evidence],
         flags.append(Flag("attribution_mismatch", "weak",
                           "Noemt experts, maar verwijst niet naar de expertwandeling."))
     if cited and _NORM_RE.search(claim.text) and "reference" not in perspectives \
-            and not any(e.kind == "map_measurement" and e.data.get("rules") for e in cited):
+            and not any(e.kind in ("map_measurement", "cross_theme") and e.data.get("rules") for e in cited):
         flags.append(Flag("attribution_mismatch", "weak",
                           "Noemt de RIVM-vuistregels, maar verwijst er niet naar."))
 
     resident = [e for e in cited if e.perspective in ("bewoners", "cross")]
     if resident and _MAJORITY_RE.search(claim.text):
-        if all(e.kind == "quote" for e in resident):
+        if all(e.kind in ANECDOTAL for e in resident):
             flags.append(Flag("overgeneralisation", "weak",
-                              "Formulering suggereert een meerderheid, maar steunt alleen op losse open antwoorden."))
+                              "Formulering suggereert een meerderheid, maar steunt alleen op losse open antwoorden of notities."))
         elif max(_max_share(e) for e in resident) < 50:
             flags.append(Flag("overgeneralisation", "weak",
                               "Formulering suggereert een meerderheid, maar geen aangehaald aandeel is 50% of meer."))
     elif (resident and _GENERIC_GROUP_RE.search(claim.text) and not _QUANTIFIED_RE.search(claim.text)
-          and all(e.kind == "quote" for e in resident)):
+          and all(e.kind in ANECDOTAL for e in resident)):
         flags.append(Flag("overgeneralisation", "weak",
                           "Stelt een mening als die van 'de bewoners', maar steunt alleen op losse open antwoorden "
                           "(noem hoeveel bewoners dit zeggen)."))
@@ -212,7 +215,8 @@ def verify_claim(claim: DraftClaim, section: str, index: dict[str, Evidence],
         flags.append(Flag("attribution_mismatch", "weak",
                           "Noemt bewoners, maar de aangehaalde antwoorden komen van stakeholders (professionals)."))
 
-    off_theme = [e.evidence_id for e in cited if e.themes and section not in e.themes and section != "Algemeen"]
+    # only a theme section can be off-theme; Conclusies cites across themes by design
+    off_theme = [e.evidence_id for e in cited if e.themes and section not in e.themes and section in THEMES]
     if off_theme:
         flags.append(Flag("theme_mismatch", "weak",
                           f"Bewijsstukken uit een ander thema: {', '.join(off_theme)}."))
@@ -237,6 +241,10 @@ def verify_claim(claim: DraftClaim, section: str, index: dict[str, Evidence],
 
 def salient_evidence(pack: EvidencePack) -> list[Evidence]:
     """Facts a reviewer would expect to see covered in this section."""
+    if pack.section == CONCLUSIES:
+        return [e for e in pack.items if e.kind == "cross_theme" and (e.data.get("n_themes", 3) >= 3)]
+    if pack.section == AANLEIDING:
+        return [e for e in pack.items if e.kind == "note"]
     out = []
     for e in pack.items:
         k = e.kind
@@ -247,6 +255,8 @@ def salient_evidence(pack: EvidencePack) -> list[Evidence]:
         elif k in ("option_share", "likert") and _max_share(e) >= 40:
             out.append(e)
         elif k in ("choice", "multi") and _max_share(e) >= 40:
+            out.append(e)
+        elif k == "map_measurement" and e.data.get("tests_rule") and e.data.get("area") == "onderzoeksgebied":
             out.append(e)
     return out
 

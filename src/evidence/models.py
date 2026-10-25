@@ -26,10 +26,17 @@ THEME_CODES: dict[str, str] = {
     "Uitstraling": "UI",
 }
 GENERAL_CODE = "AL"
-PERSPECTIVE_CODES: dict[str, str] = {"expert": "X", "bewoners": "B", "data": "D", "reference": "N", "cross": "C"}
+GENERAL = "Algemeen"
+AANLEIDING = "Aanleiding"        # project context, from researcher notes of type 'Projectcontext'
+CONCLUSIES = "Conclusies"        # cross-theme conclusions (own evidence pack)
+SECTION_CODES: dict[str, str] = {**THEME_CODES, GENERAL: GENERAL_CODE, AANLEIDING: "AA", CONCLUSIES: "CO"}
+PERSPECTIVE_CODES: dict[str, str] = {"expert": "X", "bewoners": "B", "data": "D", "reference": "N", "cross": "C",
+                                     "context": "P"}
+NOTE_CODE = "O"                  # every researcher note gets an O-.. id, whatever its perspective
 PERSPECTIVE_LABELS_NL: dict[str, str] = {
-    "expert": "expertwandeling", "bewoners": "bewonersvragenlijst", "data": "demografische data",
-    "reference": "RIVM-vuistregels", "cross": "vergelijking expert/bewoners",
+    "expert": "expertwandeling", "bewoners": "bewonersvragenlijst", "data": "data en kaarten",
+    "reference": "RIVM-vuistregels", "cross": "vergelijking tussen perspectieven",
+    "context": "projectcontext en literatuur",
 }
 
 
@@ -38,8 +45,8 @@ class Evidence:
     evidence_id: str
     case_id: str
     themes: list[str]                  # [] = general / context
-    perspective: str                   # expert | bewoners | data | reference | cross
-    kind: str                          # theme_average | expert_statement | rating | likert | choice | multi | option_share | quote | demographic | norm | comparison | respondents
+    perspective: str                   # expert | bewoners | data | reference | cross | context
+    kind: str                          # theme_average | expert_statement | rating | likert | choice | multi | option_share | quote | demographic | norm | comparison | respondents | coded | map_measurement | image_reading | note | cross_theme
     statement: str
     data: dict = field(default_factory=dict)
     source_record_ids: list[str] = field(default_factory=list)
@@ -64,7 +71,7 @@ class Evidence:
 class EvidencePack:
     """All evidence for one case and one report section (theme or general)."""
     case_id: str
-    section: str                       # a theme name, or "Algemeen"
+    section: str                       # a theme name, "Algemeen", "Aanleiding" or "Conclusies"
     items: list[Evidence]
     unavailable: list[str] = field(default_factory=list)  # inputs known to exist but not usable (e.g. chart images)
     built_with: dict = field(default_factory=dict)        # config fingerprints etc.

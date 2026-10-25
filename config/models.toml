@@ -7,6 +7,15 @@
 target_ram_gb = 16
 max_model_share_of_ram = 0.6     # leave room for OS + Streamlit + Python
 
+# The models compared in SQ3: the three local drafting models that fit the
+# 16 GB target laptop (gemma 12B is a Mac-only reference), and the three vision
+# models for infographics. The UI offers these first; `python -m reports.cli
+# compare` runs a full report with each of them and scores it against the
+# original report. Change the lists to change the comparison.
+[selection]
+drafting = ["local_qwen7b", "local_qwen3_8b", "local_llama8b"]
+vision = ["vision_qwen25vl", "vision_qwen3vl", "vision_gemma3_4b"]
+
 [model.fake]
 provider = "fake"
 model = "fake"

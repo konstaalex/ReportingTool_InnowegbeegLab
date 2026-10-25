@@ -1,0 +1,65 @@
+{
+  "version": "2.0.0",
+  "options": {
+    "cwd": "${workspaceFolder}",
+    "env": { "PYTHONPATH": "${workspaceFolder}/src" }
+  },
+  "tasks": [
+    {
+      "label": "Setup: install Python packages",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv/bin/python\" -m pip install -r requirements.txt",
+      "problemMatcher": []
+    },
+    {
+      "label": "Setup: download the Ollama models",
+      "type": "shell",
+      "command": "ollama pull qwen2.5:7b && ollama pull qwen2.5vl:7b",
+      "problemMatcher": []
+    },
+    {
+      "label": "Tests: run all",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv/bin/python\" -m pytest tests -q",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Step: ingest Buurtscan",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv/bin/python\" -m ingestion.cli ingest-buurtscan \"${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/newDataSender\" --out workspace/ingest",
+      "problemMatcher": []
+    },
+    {
+      "label": "Step: ingest Oss",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv/bin/python\" -m ingestion.cli ingest-wijkscan \"${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/Perspectieven Oss\" --out workspace --case-id euterpepark-oss --label \"Euterpepark Oss\"",
+      "problemMatcher": []
+    },
+    {
+      "label": "Step: measure maps",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv/bin/python\" -m imaging.cli analyse --workspace workspace --case euterpepark-oss",
+      "problemMatcher": []
+    },
+    {
+      "label": "Step: E0 baseline on Oss",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv/bin/python\" -m experiments.cli run E0 --workspace workspace --case euterpepark-oss",
+      "problemMatcher": []
+    },
+    {
+      "label": "Step: experiment summary",
+      "type": "shell",
+      "command": "\"${workspaceFolder}/.venv/bin/python\" -m experiments.cli summary --workspace workspace",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run all steps that need no model",
+      "dependsOrder": "sequence",
+      "dependsOn": ["Step: ingest Buurtscan", "Step: ingest Oss", "Step: measure maps", "Step: E0 baseline on Oss", "Step: experiment summary"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    }
+  ]
+}

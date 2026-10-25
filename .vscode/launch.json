@@ -1,0 +1,138 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "1 · Ingest Buurtscan data (newDataSender)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "ingestion.cli",
+      "args": ["ingest-buurtscan", "${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/newDataSender", "--out", "workspace/ingest"]
+    },
+    {
+      "name": "2 · Ingest Oss case (Perspectieven Oss)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "ingestion.cli",
+      "args": ["ingest-wijkscan", "${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/Perspectieven Oss",
+               "--out", "workspace", "--case-id", "euterpepark-oss", "--label", "Euterpepark Oss"]
+    },
+    {
+      "name": "3 · Images: measure the maps (no model)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "imaging.cli",
+      "args": ["analyse", "--workspace", "workspace", "--case", "euterpepark-oss"]
+    },
+    {
+      "name": "4 · Models: which are downloaded (Ollama)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "llm.cli",
+      "args": ["check"]
+    },
+    {
+      "name": "4b · Models: smoke-test one drafting model",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "llm.cli",
+      "args": ["smoke", "${input:textModel}"]
+    },
+    {
+      "name": "5 · Images: read infographics with a vision model",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "imaging.cli",
+      "args": ["analyse", "--workspace", "workspace", "--case", "euterpepark-oss",
+               "--vision-model", "${input:visionModel}", "--samples", "${input:samples}"]
+    },
+    {
+      "name": "5b · Images: score the readings against the gold file",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "imaging.cli",
+      "args": ["eval-reading", "--workspace", "workspace", "--case", "euterpepark-oss",
+               "--gold", "${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/gold/oss_demografie_readings.toml"]
+    },
+    {
+      "name": "6 · Experiment E0: template baseline (no model)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "experiments.cli",
+      "args": ["run", "E0", "--workspace", "workspace", "--case", "${input:case}"]
+    },
+    {
+      "name": "6b · Experiment E1/E2/E3: one section, seed 42 (quick)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "experiments.cli",
+      "args": ["run", "${input:experiment}", "--workspace", "workspace", "--case", "${input:case}",
+               "--section", "${input:section}", "--model", "${input:textModel}", "--seed", "42"]
+    },
+    {
+      "name": "6c · Experiment E1/E2/E3: all sections, 3 seeds (slow)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "experiments.cli",
+      "args": ["run", "${input:experiment}", "--workspace", "workspace", "--case", "${input:case}",
+               "--model", "${input:textModel}"]
+    },
+    {
+      "name": "6d · Experiment SMOKE: fake model, plumbing check",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "experiments.cli",
+      "args": ["run", "SMOKE", "--workspace", "workspace", "--case", "${input:case}"]
+    },
+    {
+      "name": "7 · Experiment summary (all runs)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "module": "experiments.cli",
+      "args": ["summary", "--workspace", "workspace"]
+    },
+    {
+      "name": "8 · Review UI (Streamlit, opens in browser)",
+      "type": "debugpy", "request": "launch", "console": "integratedTerminal", "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/src",
+        "INNO_WORKSPACE": "workspace",
+        "INNO_DATA_DIR": "${userHome}/Desktop/AppliedIT_Masters/Data-Evidence_prj/newDataSender"
+      },
+      "module": "streamlit",
+      "args": ["run", "src/ui/streamlit_app.py"],
+      "justMyCode": true
+    }
+  ],
+  "inputs": [
+    {
+      "id": "case", "type": "pickString", "description": "Which case?",
+      "options": ["euterpepark-oss", "passewaaij-tiel", "baardwijk-waalwijk", "bleijerheide-kerkrade", "brukske-venray",
+                  "corlaer-nijkerk", "dauwendaele-middelburg", "de-gilden-dronten", "drielanden-harderwijk",
+                  "moesel-weert", "waterkwartier-zutphen"],
+      "default": "euterpepark-oss"
+    },
+    {
+      "id": "experiment", "type": "pickString", "description": "Which pipeline? E1 naive, E2 staged, E3 staged + top-25 evidence",
+      "options": ["E1", "E2", "E3"], "default": "E1"
+    },
+    {
+      "id": "section", "type": "pickString", "description": "Which report section?",
+      "options": ["Sporten", "Actieve mobiliteit", "Formeel spelen", "Informeel spelen", "Ontmoeten", "Uitstraling"],
+      "default": "Sporten"
+    },
+    {
+      "id": "textModel", "type": "pickString", "description": "Which drafting model? (must be pulled in Ollama)",
+      "options": ["local_qwen7b", "local_qwen3_8b", "local_llama8b", "local_gemma12b", "fake"],
+      "default": "local_qwen7b"
+    },
+    {
+      "id": "visionModel", "type": "pickString", "description": "Which vision model? (must be pulled in Ollama)",
+      "options": ["vision_qwen25vl", "vision_qwen3vl", "vision_gemma3_4b", "fake_vision"],
+      "default": "vision_qwen25vl"
+    },
+    {
+      "id": "samples", "type": "pickString", "description": "How many readings per image? (median is used)",
+      "options": ["3", "1", "5"], "default": "3"
+    }
+  ]
+}

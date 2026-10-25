@@ -4,6 +4,7 @@
 store.json
 *.json
 !package.json
+!.vscode/*.json
 workspace/
 workspace*/
 # raw source files, should one ever be dropped in here by accident

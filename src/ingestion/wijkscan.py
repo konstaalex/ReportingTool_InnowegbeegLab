@@ -6,6 +6,7 @@
     <root>/Bewonersperspectief/Gecategoriseerde Resultaten Oss.xlsx          (coded open answers + survey totals)
     <root>/Data perspectief/*.png|*.jpeg                                     (QGIS maps, demografie infographics)
     <root>/Rapportage Wijkscan ... .pdf                                      (THE HUMAN-WRITTEN REPORT)
+    <root>/**/Onderzoekersnotities*.xlsx                                     (optional: researcher notes, sheet 'Notities')
 
 The human report is deliberately NOT ingested: it is the reference the
 generated draft is evaluated against, so feeding it in would leak the answer
@@ -27,7 +28,7 @@ import openpyxl
 from .buurtscan import IngestionResult, apply_survey_mapping
 from .config import load_config
 from .models import SourceRecord
-from .parsers import expert_parser, reference_parser, resident_parser, survey_tally_parser
+from .parsers import expert_parser, notes_parser, reference_parser, resident_parser, survey_tally_parser
 from .perspective_detector import detect_perspective_from_path
 from .sources import SourceDocument, sha256_file
 from .store import SourceStore
@@ -96,7 +97,13 @@ def ingest_wijkscan_folder(root: str | Path, case_id: str, case_label: str, verb
         try:
             if suffix == ".xlsx":
                 sheets = openpyxl.load_workbook(str(path), read_only=True).sheetnames
-                if persp == "expert" and any(s.lower().startswith(("score ", "scores ")) for s in sheets):
+                if notes_parser.SHEET in sheets and notes_parser.is_notes_workbook(path):
+                    records, problems = notes_parser.parse_notes(str(path), rel, case_id)
+                    doc.source_type, doc.perspective = "researcher_notes", None
+                    if problems:
+                        result.validation[rel] = problems
+                    persp = None   # notes are not one of the three perspectives
+                elif persp == "expert" and any(s.lower().startswith(("score ", "scores ")) for s in sheets):
                     buurt = re.sub(r"^Expertwandeling resultaten Oss\s+", "", path.stem, flags=re.I).strip()
                     for s in sheets:
                         if s.lower().startswith(("score ", "scores ")) and s != expert_parser.SCORE_PER_INDICATOR_SHEET:
@@ -163,5 +170,5 @@ def ingest_wijkscan_folder(root: str | Path, case_id: str, case_label: str, verb
     store.add_many(reference_parser.load_rivm_rules(rivm_checksum))
     result.cases[case_id] = {"label": case_label, "perspectives": perspectives, "synthetic": False,
                              "complete": {"expert", "bewoners", "data"} <= set(perspectives),
-                             "layout": "wijkscan"}
+                             "layout": "wijkscan", "root": str(root.resolve())}
     return result

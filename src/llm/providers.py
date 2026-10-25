@@ -207,6 +207,10 @@ class FakeProvider(_Base):
                                              "legend_item": ""}]}
             text = json.dumps(payload, ensure_ascii=False)
             return GenerationResult(text=text, parsed=payload, provider="fake", model="fake-vision")
+        if request.task.startswith("judge_"):
+            payload = {"label": "partial", "zinnen": [1], "conflict": False, "reden": "[FAKE] testoordeel"}
+            text = json.dumps(payload, ensure_ascii=False)
+            return GenerationResult(text=text, parsed=payload, provider="fake", model="fake")
         lines = [m for m in (_ID_RE.search(l) for l in prompt.splitlines()) if m]
         claims = []
         for m in lines[:4]:

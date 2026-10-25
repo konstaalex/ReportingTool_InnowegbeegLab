@@ -43,32 +43,78 @@ python -m imaging.cli analyse --workspace workspace --case euterpepark-oss      
 python -m imaging.cli analyse --workspace workspace --case euterpepark-oss --vision-model vision_qwen25vl
 python -m imaging.cli eval-reading --workspace workspace --case euterpepark-oss --gold "$HOME/Desktop/AppliedIT_Masters/Data-Evidence_prj/gold/oss_demografie_readings.toml"   # confidential: never in the repo
 
+# 3c. researcher notes: what the team knows but no file holds (walk observations, the resident
+#     meeting, project context for the Aanleiding, literature). Keep the file next to the case data;
+#     a file named Onderzoekersnotities*.xlsx in the case folder is read by ingest-wijkscan.
+python -m ingestion.cli notes-template "$HOME/Desktop/AppliedIT_Masters/Data-Evidence_prj/Perspectieven Oss/Onderzoekersnotities.xlsx"
+python -m ingestion.cli ingest-notes <file.xlsx> --out workspace --case-id euterpepark-oss    # for a file kept elsewhere
+
+# 3d. the sections beyond the six themes (template = no model; naive/staged = prompt v2)
+python -m experiments.cli run E0 --workspace workspace --case euterpepark-oss --section Conclusies
+python -m experiments.cli run E1 --workspace workspace --case euterpepark-oss --section Conclusies --seed 42
+
+# 3e. full reports per model: the three selected drafting models ([selection] in config/models.toml:
+#     qwen2.5:7b, qwen3:8b, llama3.1:8b) each draft every section; the tool renders a Word report
+#     in the Wijkscan house layout (maps, charts drawn from the survey data, appendices)
+ollama pull qwen2.5:7b && ollama pull qwen3:8b && ollama pull llama3.1:8b
+python -m reports.cli models
+python -m reports.cli generate --case euterpepark-oss --model local_qwen7b --pdf     # one model
+python -m reports.cli compare  --case euterpepark-oss --generate --include-template  # all three + baseline, vs. the original
+python -m reports.cli evaluate --case euterpepark-oss --run latest --judge local_qwen7b   # optional LLM judge (local only)
+python -m reports.cli calibrate --csv workspace/reports/euterpepark-oss/<run>/evaluation/alignment.csv
+python -m reports.cli adopt --case euterpepark-oss --run <run id> --reviewer <name>  # start the review from a run
+
 # 4. review UI
 INNO_WORKSPACE=workspace INNO_DATA_DIR="$DATA" streamlit run src/ui/streamlit_app.py
 
 # tests (synthetic fixtures only; no research data needed)
-python -m unittest tests.test_buurtscan_ingestion tests.test_evidence_and_verification tests.test_pipelines_review_export tests.test_imaging_and_oss
+python -m unittest tests.test_buurtscan_ingestion tests.test_evidence_and_verification tests.test_pipelines_review_export tests.test_imaging_and_oss tests.test_notes_zones_conclusions tests.test_reports
 python tests/run_stdlib.py && python tests/run_stdlib_evaluation.py
 ```
 
+The structure of the report, where each part's content comes from, and how a generated
+report is compared with the original are described in `docs/report-structure.md`.
+The original report is only read for evaluation; the comparison files quote it and stay
+in `workspace/reports/` (git-ignored).
+
 `workspace/` holds derived data (scores, resident quotes) and is git-ignored.
+
+## Running in VS Code
+
+Open the repository folder in VS Code (File › Open Folder) and install the recommended
+Python extensions when asked. `.vscode/` then provides:
+
+- **Run and Debug** (▷ in the sidebar): one entry per step, numbered in order: ingest,
+  notes template, measure maps, check/smoke models, read infographics, score against the
+  gold file, experiments E0–E3 (also for Conclusies/Aanleiding), summary, review UI, and
+  9–9f for full reports per model and the comparison with the original. Pickers ask for case, section and model. Set
+  breakpoints anywhere in `src/` to step through a run.
+- **Terminal › Run Task…**: `Setup: install Python packages`, `Setup: download the Ollama
+  models`, `Tests: run all`, and `Run all steps that need no model` (also Cmd+Shift+B).
+- **Testing** (flask icon): the pytest suite; `pytest.ini` puts `src/` on the path.
+- **Terminal**: new terminals use `.venv` and have `PYTHONPATH`, `$DATA`, `$OSS` and
+  `$GOLD` set, so the commands above work as `--gold "$GOLD"` etc.
+
+Data paths assume `~/Desktop/AppliedIT_Masters/Data-Evidence_prj/`; change them in
+`.vscode/launch.json`, `tasks.json` and `settings.json` if the data lives elsewhere.
 
 ## Layout
 
 | package | role | requirement |
 |---|---|---|
-| `ingestion/` | parsers (Oss + Buurtscan), source registry with checksums, config loader | UC1, FR1–FR3 |
-| `evidence/` | deterministic statistics/quotes/scores/norms with readable ids (`B-SP-04`) | brief §10 |
+| `ingestion/` | parsers (Oss + Buurtscan + researcher notes), source registry with checksums, config loader | UC1, FR1–FR3 |
+| `evidence/` | deterministic statistics/quotes/scores/norms/map measurements/notes with readable ids (`B-SP-04`, `O-FS-01`); a cross-theme pack for Conclusies | brief §10 |
 | `llm/` | provider protocol, Ollama / OpenAI-compatible / Fake / Replay, RAM check, privacy guard | UC5, FR13–FR16 |
-| `drafting/` | pipelines `template`, `naive`, `staged`; versioned prompts in `prompts/` | UC2, SQ3 |
+| `drafting/` | pipelines `template`, `naive`, `staged` for the six themes; single-call prompts for Conclusies and Aanleiding; versioned prompts in `prompts/` (v2 default, v1 frozen) | UC2, SQ3 |
 | `verification/` | citation, number, attribution, overgeneralisation, norm, theme and writing-rule checks | FR5–FR7, NFR1 |
 | `review/` | append-only, hash-chained review sessions; override needed for flagged claims | UC3/UC4, FR8–FR10, NFR11 |
-| `export/` | export gate, Markdown/DOCX report, `evidence_map.csv` | UC6, FR11–FR12 |
+| `export/` | export gate, Markdown report, `evidence_map.csv`; Word report in the Wijkscan house layout (`docx_report.py`, structure in `config/report_structure.toml`), charts drawn from survey evidence (`charts.py`), PDF via LibreOffice | UC6, FR11–FR12 |
+| `reports/` | full report per model (runs), comparison with the original report (structure, coverage, ceiling, numbers, figures), optional local LLM judge, calibration against human labels | SQ3, evaluation |
 | `experiments/` | run records: config, checksums, fingerprints, tokens, latency, memory, metrics | SQ3, brief §15 |
 | `app/` | `Workspace` services: the only API the UI calls | brief §7 |
-| `imaging/` | map measurement (legend colours per neighbourhood), vision-model reading with self-ensemble, confirmation log, reading evaluation | images as evidence |
-| `ui/` | Streamlit review interface | SQ4 |
-| `config/` | survey→theme mapping (PROPOSED), demografie mapping, models, experiments, RIVM + writing rules | — |
+| `imaging/` | map measurement (legend colours per neighbourhood; homes inside RIVM distance zones, via registration on the shared base map), vision-model reading with self-ensemble, confirmation log, reading evaluation | images as evidence |
+| `ui/` | Streamlit review interface; tab 5 makes and compares the full reports of the three models | SQ4 |
+| `config/` | survey→theme mapping (PROPOSED), demografie mapping, models (+ the three selected), experiments, report structure, RIVM + writing rules | — |
 
 Interpretive choices (survey→theme mapping, demografie→theme/RIVM mapping) live in
 `config/*.toml`, marked *proposed* until InnoBeweegLab confirms them.

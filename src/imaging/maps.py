@@ -180,67 +180,148 @@ def _resize_nearest(arr: np.ndarray, factor: float) -> np.ndarray:
     return arr[yi][:, xi]
 
 
+# ------------------------------------------------------------------ registration
+#
+# Maps of one study area are exported from the same QGIS project, often on the
+# same base map. Where a map's own border lines are hidden under translucent
+# distance zones, the neighbourhoods (and the homes) are carried over from a
+# reference map instead. The two maps are registered on what they share - the
+# base map's streets and building edges - not on the borders: edges survive a
+# translucent overlay, border lines under it often do not pass a darkness test.
+# The fit is then checked independently: the carried-over border network must
+# land on dark pixels of the target map ('border_overlap').
+
+BORDER_OK = 0.8        # below this share the transfer is not trusted
+
+
+def edge_map(img: np.ndarray, scale: int = 1) -> np.ndarray:
+    """Gradient magnitude of the luminance, optionally block-averaged by `scale`."""
+    lum = img.astype(np.float32).mean(axis=2)
+    if scale > 1:
+        h, w = lum.shape
+        lum = lum[:h // scale * scale, :w // scale * scale].reshape(h // scale, scale, w // scale, scale).mean((1, 3))
+    return np.hypot(ndimage.sobel(lum, 1), ndimage.sobel(lum, 0)).astype(np.float32)
+
+
+def _ncc_search(a: np.ndarray, b: np.ndarray, min_overlap: float = 0.5) -> tuple[float, int, int]:
+    """Best placement of `a` over `b` by normalised cross-correlation (FFT).
+    Returns (score, dy, dx): a's top-left corner in b's coordinates."""
+    from scipy.signal import fftconvolve
+    a = a - a.mean()
+    b = b - b.mean()
+    ones = np.ones_like(a)
+    corr = fftconvolve(b, a[::-1, ::-1], mode="full")
+    energy = fftconvolve(b * b, ones, mode="full")
+    cover = fftconvolve(np.ones_like(b), ones, mode="full") / ones.size
+    score = corr / np.sqrt(np.maximum(energy, 1e-6)) / np.sqrt(float((a * a).sum()) or 1.0)
+    score[cover < min_overlap] = -1.0
+    py, px = np.unravel_index(int(np.argmax(score)), score.shape)
+    return float(score[py, px]), int(py - (a.shape[0] - 1)), int(px - (a.shape[1] - 1))
+
+
+def _overlap(src_shape: tuple, dst_shape: tuple, dy: int, dx: int):
+    """Slices of src and dst that overlap when src's (0,0) sits at dst (dy, dx)."""
+    ys0, xs0, yt0, xt0 = max(0, -dy), max(0, -dx), max(0, dy), max(0, dx)
+    hh, ww = min(src_shape[0] - ys0, dst_shape[0] - yt0), min(src_shape[1] - xs0, dst_shape[1] - xt0)
+    if hh <= 0 or ww <= 0:
+        return None
+    return (slice(ys0, ys0 + hh), slice(xs0, xs0 + ww)), (slice(yt0, yt0 + hh), slice(xt0, xt0 + ww))
+
+
+def _ncc_at(a: np.ndarray, b: np.ndarray, dy: int, dx: int) -> float:
+    sl = _overlap(a.shape, b.shape, dy, dx)
+    if sl is None:
+        return -1.0
+    x, y = a[sl[0]], b[sl[1]]
+    x, y = x - x.mean(), y - y.mean()
+    den = float(np.sqrt((x * x).sum() * (y * y).sum()))
+    return float((x * y).sum() / den) if den else -1.0
+
+
+def warp(arr: np.ndarray, zoom: float, offset_xy: tuple[int, int] | list[int], shape: tuple[int, int]) -> np.ndarray:
+    """Place a reference-frame array into a target frame: target = zoom * ref + offset."""
+    a = _resize_nearest(arr, zoom)
+    out = np.zeros(shape[:2], dtype=arr.dtype)
+    sl = _overlap(a.shape, out.shape, int(offset_xy[1]), int(offset_xy[0]))
+    if sl is not None:
+        out[sl[1]] = a[sl[0]]
+    return out
+
+
+def align_basemap(ref_img: np.ndarray, target_img: np.ndarray, scale: int = 4,
+                  zoom_range: tuple[float, float] = (0.9, 1.1), zoom_step: float = 0.01) -> dict:
+    """Register two maps on their shared base map (street and building edges):
+    coarse zoom + translation search by FFT cross-correlation at 1/`scale`,
+    then translation refinement at 1/2 and full resolution.
+    Returns {"zoom", "offset_xy": [dx, dy], "ncc"} with target = zoom * ref + offset."""
+    ea, eb = edge_map(ref_img, scale), edge_map(target_img, scale)
+    zooms = [1.0] + [float(z) for z in np.arange(zoom_range[0], zoom_range[1] + 1e-9, zoom_step) if abs(z - 1.0) > 1e-9]
+    best = (-2.0, 1.0, 0, 0)
+    for z in zooms:
+        a = ea if z == 1.0 else ndimage.zoom(ea, z, order=1)
+        s, dy, dx = _ncc_search(a, eb)
+        if s > best[0] + 1e-6:
+            best = (s, z, dy, dx)
+    _, z, dy, dx = best
+    dy, dx = dy * scale, dx * scale
+    for sc, radius in ((2, scale // 2 + 1), (1, 2)):
+        a, b = edge_map(ref_img, sc), edge_map(target_img, sc)
+        if z != 1.0:
+            a = ndimage.zoom(a, z, order=1)
+        cands = [(_ncc_at(a, b, (dy + ddy * sc) // sc, (dx + ddx * sc) // sc), dy + ddy * sc, dx + ddx * sc)
+                 for ddy in range(-radius, radius + 1) for ddx in range(-radius, radius + 1)]
+        s, dy, dx = max(cands)
+    return {"zoom": round(float(z), 3), "offset_xy": [int(dx), int(dy)], "ncc": round(float(s), 3)}
+
+
+def border_agreement(ref_img: np.ndarray, info: dict, target_img: np.ndarray, contrast: float = 40.0,
+                     window: int = 41, tol: int = 3) -> float:
+    """Share of the reference border network that lands on (or within `tol` px
+    of) line-dark pixels in the target after transfer. 'Line-dark' is relative:
+    at least `contrast` below the local mean luminance. A black line under one
+    or two translucent zones is tinted and lighter (luminance ~110) but still
+    much darker than its surroundings. On the Oss maps a correct fit scores
+    0.95-0.99, a fit 25 px off 0.30-0.47."""
+    b = warp(boundary_mask(ref_img).astype(np.uint8), info["zoom"], info["offset_xy"], target_img.shape[:2]).astype(bool)
+    lum = target_img.astype(np.float32).mean(axis=2)
+    dark = lum < ndimage.uniform_filter(lum, size=window) - contrast
+    near = ndimage.binary_dilation(dark, iterations=tol)
+    return round(float((b & near).sum() / max(b.sum(), 1)), 3)
+
+
 def align_regions(ref_img: np.ndarray, ref_regions: np.ndarray, target_img: np.ndarray,
-                  scale: int = 4, zoom_range: tuple[float, float] = (0.8, 1.25), zoom_step: float = 0.01
+                  scale: int = 4, zoom_range: tuple[float, float] = (0.9, 1.1), zoom_step: float = 0.01
                   ) -> tuple[np.ndarray, dict]:
     """Transfer a named region template from a reference map onto another map
-    of the same study area, for maps whose own border lines are hidden under
-    overlays. Searches zoom (scale) and translation by FFT cross-correlation of
-    the border masks. Returns (region image in target frame, info with zoom,
-    offset and overlap = share of the transferred border landing on dark target
-    pixels; < 0.6 means the fit is doubtful and the measurement is flagged)."""
-    from scipy.signal import fftconvolve
-    ref_b = boundary_mask(ref_img)
-    tgt_dark = ndimage.binary_opening(target_img.max(axis=2) < 90, iterations=1)
-    near_dark = ndimage.binary_dilation(tgt_dark, iterations=3)
-    # correlate border pieces with border pieces (not with every dark pixel:
-    # street names and buildings would dominate the correlation)
-    tgt_b = ndimage.binary_dilation(boundary_mask(target_img), iterations=2)
-    b = tgt_b[::scale, ::scale].astype(np.float32)
-    a0 = ndimage.binary_dilation(ref_b, iterations=2)[::scale, ::scale]
+    of the same study area. Returns (region image in the target frame, info:
+    zoom, offset_xy, ncc, border_overlap). border_overlap < BORDER_OK means the
+    fit is doubtful; callers then report whole-map results only."""
+    info = align_basemap(ref_img, target_img, scale, zoom_range, zoom_step)
+    info["border_overlap"] = border_agreement(ref_img, info, target_img)
+    return warp(ref_regions, info["zoom"], info["offset_xy"], target_img.shape[:2]), info
 
-    nd_small = ndimage.binary_dilation(tgt_dark[::scale, ::scale], iterations=1)
 
-    def place(z: float) -> tuple[float, int, int]:
-        """Best translation for zoom z (cross-correlation), scored by the share of
-        the zoomed reference border that lands on dark target pixels."""
-        a = _resize_nearest(a0, z)
-        corr = fftconvolve(b, a[::-1, ::-1].astype(np.float32), mode="full")
-        py, px = np.unravel_index(int(np.argmax(corr)), corr.shape)
-        dy_s, dx_s = py - (a.shape[0] - 1), px - (a.shape[1] - 1)
-        thin = _resize_nearest(ref_b[::scale, ::scale], z)
-        th, tw = nd_small.shape
-        h, w = thin.shape
-        ys0, xs0, yt0, xt0 = max(0, -dy_s), max(0, -dx_s), max(0, dy_s), max(0, dx_s)
-        hh, ww = min(h - ys0, th - yt0), min(w - xs0, tw - xt0)
-        if hh <= 0 or ww <= 0:
-            return 0.0, dy_s, dx_s
-        hit = (thin[ys0:ys0 + hh, xs0:xs0 + ww] & nd_small[yt0:yt0 + hh, xt0:xt0 + ww]).sum()
-        return float(hit) / max(thin.sum(), 1), dy_s, dx_s
+@dataclass
+class RegionTemplate:
+    """Neighbourhoods and homes taken from one reference map of a case.
+    `homes` = legend-coloured buildings inside the regions: on a Basisbehoefte-
+    style map every coloured building is an address the RIVM rules are about."""
+    image_id: str
+    img: np.ndarray
+    regions: np.ndarray
+    names: dict[int, str]
+    homes: np.ndarray
 
-    if place(1.0)[0] >= 0.9:          # same layout and zoom: no search needed
-        best_z = 1.0
-    else:
-        zooms = np.arange(zoom_range[0], zoom_range[1] + 1e-9, 0.04)
-        coarse = max(zooms, key=lambda z: place(z)[0])
-        fine = np.arange(coarse - 0.03, coarse + 0.03 + 1e-9, zoom_step)
-        best_z = max(fine, key=lambda z: place(z)[0])
-    _, dy_s, dx_s = place(best_z)
-    dy, dx = dy_s * scale, dx_s * scale
-
-    reg_z = _resize_nearest(ref_regions, best_z)
-    b_z = _resize_nearest(ref_b.astype(np.uint8), best_z).astype(bool)
-    out = np.zeros(target_img.shape[:2], dtype=ref_regions.dtype)
-    shifted_b = np.zeros_like(tgt_dark)
-    h, w = reg_z.shape
-    th, tw = out.shape
-    ys0, xs0, yt0, xt0 = max(0, -dy), max(0, -dx), max(0, dy), max(0, dx)
-    hh, ww = min(h - ys0, th - yt0), min(w - xs0, tw - xt0)
-    if hh > 0 and ww > 0:
-        out[yt0:yt0 + hh, xt0:xt0 + ww] = reg_z[ys0:ys0 + hh, xs0:xs0 + ww]
-        shifted_b[yt0:yt0 + hh, xt0:xt0 + ww] = b_z[ys0:ys0 + hh, xs0:xs0 + ww]
-    overlap = float((shifted_b & near_dark).sum() / max(shifted_b.sum(), 1))
-    return out, {"zoom": round(float(best_z), 3), "offset_xy": [int(dx), int(dy)], "border_overlap": round(overlap, 3)}
+    @classmethod
+    def from_map(cls, image_id: str, path: str | Path, legend: list[str],
+                 seeds: Optional[dict[str, tuple[float, float]]] = None, tolerance: float = 30.0,
+                 legend_search: tuple = (0.55, 0.6, 1.0, 1.0)) -> "RegionTemplate":
+        img = load_rgb(path)
+        reg, regions, _ = detect_regions(img, seeds)
+        sw, _w = label_swatches(detect_swatches(img, legend_search), legend)
+        classes = classify(img, [s for s in sw if s.label], tolerance)
+        return cls(image_id, img, reg, {r.region_id: r.name or f"regio {r.region_id}" for r in regions},
+                   (classes >= 0) & (reg > 0))
 
 
 # ------------------------------------------------------------------ measurement
@@ -369,7 +450,7 @@ def write_overlay(img: np.ndarray, reg_img: np.ndarray, regions: list[Region], c
 def count_objects(path: str | Path, labels: list[str], skip_labels: tuple[str, ...] = (),
                   seeds: Optional[dict[str, tuple[float, float]]] = None, tolerance: float = 25.0,
                   min_pixels: int = 40, legend_search: tuple = (0.55, 0.6, 1.0, 1.0),
-                  region_template: Optional[tuple] = None) -> MapMeasurement:
+                  region_template: Optional[RegionTemplate] = None) -> MapMeasurement:
     """Location maps (play/sport spots drawn as coloured dots or areas): count
     connected blobs per legend colour, per region when regions are available.
     `skip_labels` = transparent overlay classes (distance buffers), which are
@@ -381,9 +462,10 @@ def count_objects(path: str | Path, labels: list[str], skip_labels: tuple[str, .
     reg_img, regions, _ = detect_regions(img, seeds)
     params: dict = {"tolerance": tolerance, "min_pixels": min_pixels}
     if not regions and region_template is not None:
-        reg_img, info = align_regions(region_template[0], region_template[1], img)
+        reg_img, info = align_regions(region_template.img, region_template.regions, img)
+        info["reference"] = region_template.image_id
         params["region_alignment"] = info
-        if info["border_overlap"] < 0.9:
+        if info["border_overlap"] < BORDER_OK:
             warnings.append(f"neighbourhood borders could not be matched to this map (overlap {info['border_overlap']}); "
                             "only whole-map counts are reported")
             reg_img = np.zeros_like(reg_img)
@@ -397,8 +479,8 @@ def count_objects(path: str | Path, labels: list[str], skip_labels: tuple[str, .
     total: dict[str, int] = {}
     per_region: dict[str, dict] = {}
     region_names = {r.region_id: (r.name or f"regio {r.region_id}") for r in regions}
-    if not regions and reg_img.max() > 0 and region_template is not None and len(region_template) > 2:
-        region_names = region_template[2]   # names of the template's region ids
+    if not regions and reg_img.max() > 0 and region_template is not None:
+        region_names = region_template.names   # names of the template's region ids
     for i, name in enumerate(names):
         lab, n = ndimage.label((cls == i) & frame)
         sizes = ndimage.sum(np.ones_like(lab), lab, range(1, n + 1)) if n else []
@@ -416,3 +498,117 @@ def count_objects(path: str | Path, labels: list[str], skip_labels: tuple[str, .
         classes=[{"label": n, "rgb": list(s.rgb), "swatch_bbox": list(s.bbox)} for n, s in zip(names, sw)],
         total=total, per_region=per_region, unnamed_regions=[], warnings=warnings, params=params,
     )
+
+
+# ------------------------------------------------------------------ distance zones (coverage)
+#
+# Sport- en speelkaarten draw the RIVM distance rule itself: a translucent zone
+# of 200 m (children up to 12) or 400 m (older than 12) around every play or
+# sport location. Whether a home lies inside the zone IS the rule's outcome for
+# that home. Homes and neighbourhoods come from the reference map (registered
+# on the shared base map); the zone is recognised by its tint.
+
+ZONE_THRESHOLD = 0.5
+
+
+def tint_score(img: np.ndarray, rgb: tuple[int, int, int] | list[int]) -> np.ndarray:
+    """Per pixel: how strongly it carries the tint of a translucent overlay whose
+    legend swatch (drawn over white) has colour `rgb`. Chroma (colour minus its
+    own grey level) projected on the swatch's chroma: ~1 = tinted like the
+    swatch, ~0 = untinted grey/white base map. A translucent layer adds the same
+    chroma to any grey, so dark and light buildings score alike."""
+    t = np.asarray(rgb, np.float32)
+    t = t - t.mean()
+    c = img.astype(np.float32)
+    c -= c.mean(axis=2, keepdims=True)
+    return (c @ t) / float(t @ t)
+
+
+def measure_zone_coverage(path: str | Path, labels: list[str], zone_label: str, template: RegionTemplate,
+                          threshold: float = ZONE_THRESHOLD, legend_search: tuple = (0.55, 0.6, 1.0, 1.0),
+                          overlay_to: Optional[str | Path] = None) -> MapMeasurement:
+    """Share of homes (and of the area) inside a translucent distance zone,
+    for the whole study area and per neighbourhood.
+
+    per region: {"homes_in_zone", "homes", "area_in_zone", "area"} in pixels.
+    "Homes" = legend-coloured buildings on the template's reference map; an
+    area without coloured buildings (e.g. not built yet) gets area only."""
+    img = load_rgb(path)
+    sw, warnings = label_swatches(detect_swatches(img, legend_search), labels)
+    zone = next((s for s in sw if s.label == zone_label), None)
+    params: dict = {"threshold": threshold, "reference": template.image_id}
+    method = ("share of homes (coloured buildings on the reference map) inside the translucent distance zone; "
+              "maps registered on their shared base map (deterministic)")
+    if zone is None:
+        warnings.append(f"legend entry '{zone_label}' not found: zone coverage not measured")
+        return MapMeasurement(str(path), method, [], {}, {}, [], warnings, params)
+    info = align_basemap(template.img, img)
+    info["border_overlap"] = border_agreement(template.img, info, img)
+    params["alignment"] = info
+    if info["border_overlap"] < BORDER_OK:
+        warnings.append(f"the reference map could not be matched to this map (border overlap {info['border_overlap']}): "
+                        "zone coverage not measured")
+        return MapMeasurement(str(path), method, [], {}, {}, [], warnings, params)
+    reg = warp(template.regions, info["zoom"], info["offset_xy"], img.shape[:2])
+    homes = warp(template.homes.astype(np.uint8), info["zoom"], info["offset_xy"], img.shape[:2]).astype(bool)
+    score = tint_score(img, zone.rgb)
+    inzone = score >= threshold
+
+    def cov(mask: np.ndarray) -> dict:
+        h = mask & homes
+        return {"homes_in_zone": int((h & inzone).sum()), "homes": int(h.sum()),
+                "area_in_zone": int((mask & inzone).sum()), "area": int(mask.sum())}
+
+    total = cov(reg > 0)
+    per_region = {name: cov(reg == rid) for rid, name in template.names.items()}
+    ambiguous = float(((score > 0.2) & (score < threshold) & homes).sum() / max(homes.sum(), 1))
+    params["ambiguous_home_share"] = round(ambiguous, 4)
+    if ambiguous > 0.05:
+        warnings.append(f"{ambiguous:.0%} of home pixels have an in-between tint: zone edges uncertain")
+    overlay_path = str(write_zone_overlay(img, reg, template.names, homes, inzone, per_region, overlay_to)) if overlay_to else None
+    return MapMeasurement(
+        image=str(path), method=method,
+        classes=[{"label": zone_label, "rgb": list(zone.rgb), "swatch_bbox": list(zone.bbox)}],
+        total=total, per_region=per_region, unnamed_regions=[], warnings=warnings, params=params,
+        overlay_path=overlay_path,
+    )
+
+
+def coverage_pct(c: dict) -> tuple[Optional[int], Optional[int]]:
+    """(homes %, area %) inside the zone; homes None when the area has no homes."""
+    homes = int(round(100 * c["homes_in_zone"] / c["homes"])) if c.get("homes") else None
+    area = int(round(100 * c["area_in_zone"] / c["area"])) if c.get("area") else None
+    return homes, area
+
+
+def write_zone_overlay(img: np.ndarray, reg: np.ndarray, names: dict[int, str], homes: np.ndarray, inzone: np.ndarray,
+                       per_region: dict[str, dict], out: str | Path, max_side: int = 1600) -> Path:
+    """Check image: zone faintly blue, homes inside the zone dark blue, homes
+    outside the zone red, neighbourhood borders and coverage per neighbourhood."""
+    from PIL import ImageDraw, ImageFont
+    vis = (img.astype(np.float32) * 0.25 + 191).astype(np.uint8)
+    vis[inzone & (reg > 0)] = (vis[inzone & (reg > 0)] * 0.6 + np.array([120, 170, 255]) * 0.4).astype(np.uint8)
+    vis[homes & inzone] = (25, 70, 200)
+    vis[homes & ~inzone] = (220, 30, 30)
+    edges = reg != ndimage.grey_erosion(reg, size=(5, 5))
+    vis[edges & (reg > 0)] = (0, 0, 0)
+    im = Image.fromarray(vis)
+    draw = ImageDraw.Draw(im)
+    try:
+        font = ImageFont.load_default(size=max(18, img.shape[1] // 70))
+    except Exception:  # noqa: BLE001 - older Pillow
+        font = None
+    for rid, name in names.items():
+        m = reg == rid
+        if not m.any():
+            continue
+        cy, cx = ndimage.center_of_mass(m)
+        h, a = coverage_pct(per_region.get(name, {}))
+        label = f"{name}\nwoningen {h}% · gebied {a}%" if h is not None else f"{name}\ngebied {a}% (geen woningen)"
+        draw.multiline_text((cx - len(name) * 5, cy - 10), label, fill=(0, 0, 0), font=font,
+                            stroke_width=3, stroke_fill=(255, 255, 255))
+    im.thumbnail((max_side, max_side))
+    out = Path(out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    im.save(out)
+    return out
