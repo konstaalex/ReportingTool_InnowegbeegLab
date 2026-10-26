@@ -1,0 +1,192 @@
+\section{How InnoBeweegLab builds a Wijkscan report today}\label{sec:process}
+% figures and tables of this chapter are numbered 2.x, so they do not clash with the
+% "Figure 1" / "Figure 2" named in the text of Section~\ref{sec:figures}
+\setcounter{figure}{0}\renewcommand{\thefigure}{2.\arabic{figure}}
+\setcounter{table}{0}\renewcommand{\thetable}{2.\arabic{table}}
+
+The system my thesis designs has to produce the same kind of report InnoBeweegLab already writes, from the same inputs. Before turning to the literature, this chapter therefore documents how such a report is built today. It answers the Field sub-question (Section~\ref{sec:rq}) as far as documents and data can. The sources are the material InnoBeweegLab gave me:
+\begin{itemize}
+\item the human-written \textquotedblleft{}Rapportage Wijkscan Euterpepark Oss\textquotedblright{} (the \textit{reference report}) and the working dataset behind it;
+\item a synthetic Buurtscan dataset with ten fictitious neighbourhoods, which I received in October 2026, together with two documents of writing rules;
+\item my notes of the first stakeholder meeting;
+\item my stakeholder survey (Section~\ref{sec:res-survey}).
+\end{itemize}
+The reference report is confidential. I describe its method, structure and files, but none of its findings, and I quote none of its text. Where the material does not show how a step is done, I leave the step undescribed. The follow-up interviews (Section~\ref{sec:res-survey}) still have to confirm and complete this account.
+
+\subsection{The method: the physical environment, six themes, three perspectives}\label{sec:process-method}
+
+InnoBeweegLab's scan builds on the BVO model (\textit{Beweegvriendelijke Omgeving}, Hoyng \& Van Eck, 2021). This model describes a movement-friendly environment as a combination of \textit{hardware} (the physical environment), \textit{software} and \textit{orgware}. The scan looks at the hardware. It combines available data with the judgement of specialists. The method is called the \textbf{Buurtscan}. When the research area is a district (\textit{wijk}) rather than a neighbourhood (\textit{buurt}), and the funding scheme uses that term, the same method is reported as a \textbf{Wijkscan}.
+
+Every scan is organised around \textbf{six themes}: Sporten (sport), Actieve mobiliteit (active mobility), Formeel spelen (formal play), Informeel spelen (informal play), Ontmoeten (meeting others) and Uitstraling (appearance). The themes structure the data collection, the coding of open answers, and every chapter of the report. Each theme is looked at from \textbf{three perspectives}:
+\begin{itemize}
+\item a \textbf{data perspective}: demographic figures, and testing the area against measurable norms;
+\item an \textbf{expert perspective}: an observation walk by InnoBeweegLab professionals;
+\item a \textbf{resident perspective}: questionnaires, a resident meeting, and a questionnaire for stakeholders.
+\end{itemize}
+The norms are the RIVM rules of thumb (\textit{vuistregels}) for a healthy layout of public space (RIVM, 2025, report 2025-0155). There are six rules for physical activity. Minimally 25\% of public space is primarily meant for moving, playing and sport. And every home has, within walking or cycling distance:
+\begin{itemize}
+\item a play place for children up to 12 within 200\,m;
+\item at least 1\,ha of connected green space to move in within 300\,m;
+\item a play or sport place for everyone older than 12 within 400\,m;
+\item a supermarket, a GP practice, a primary school and a public-transport stop within 800\,m;
+\item at least three types of sport accommodation within 1500\,m.
+\end{itemize}
+In the reference report, five of these rules were tested, each on its own map (Table~\ref{tab:rules-maps}). The 25\% rule was not tested.
+
+\begingroup\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{2.9cm}|>{\raggedright\arraybackslash}p{4.4cm}|>{\raggedright\arraybackslash}p{3.6cm}|}
+\caption{The RIVM rules tested in the reference report, the map that tests each one, how the map encodes the answer, and the kind of statement the report makes from it (read from the maps and the report's method chapter; findings omitted).}\label{tab:rules-maps}\\
+\hline
+\cellcolor{navy}\textcolor{white}{\textbf{RIVM rule}} & \cellcolor{navy}\textcolor{white}{\textbf{Map}} & \cellcolor{navy}\textcolor{white}{\textbf{How the map encodes it}} & \cellcolor{navy}\textcolor{white}{\textbf{Kind of statement in the report}} \\ \hline
+\endfirsthead
+\hline
+\cellcolor{navy}\textcolor{white}{\textbf{RIVM rule}} & \cellcolor{navy}\textcolor{white}{\textbf{Map}} & \cellcolor{navy}\textcolor{white}{\textbf{How the map encodes it}} & \cellcolor{navy}\textcolor{white}{\textbf{Kind of statement in the report}} \\ \hline
+\endhead
+Play place within 200\,m (up to 12) and within 400\,m (older than 12) & Sport- en speelkaart (also one version per age group) & coloured markers per type of place; a translucent distance zone around the places (irregular shapes, not circles) & whether the neighbourhoods and the development area lie inside the zone \\ \hline
+\rowcolor{light}
+1\,ha of green within 300\,m & Beweeg\-groen\-kaart & every building coloured: green within 300\,m or not & which neighbourhoods, or parts of them, do not meet the rule \\ \hline
+Daily facilities within 800\,m & Basis\-behoefte\-kaart & every building coloured by how many of the four facilities lie within 800\,m (0--4) & how many facilities most buildings have, and where they have fewer \\ \hline
+\rowcolor{light}
+Three types of sport accommodation within 1500\,m & Sport\-accommodatie\-kaart & every building coloured by a count from 0 to 5 & whether the area meets the minimum of three \\ \hline
+\end{longtable}
+\endgroup
+
+Two more maps support the analysis without testing a rule. The Beweegstructuurkaart marks four types of place (from places that draw visitors from several neighbourhoods down to a small play spot near home, and meeting places), defined in the report's appendix. The Voorzieningenkaart shows facilities as icons. A separate \textquotedblleft{}inspiration\textquotedblright{} map, with proposed new places, is used only in the recommendations.
+
+\subsection{What each perspective produces}\label{sec:process-perspectives}
+
+\textbf{Data perspective: demographics.} The report compares each neighbourhood with its municipality and with the national figure. The figures come from four public sources, which the reference report lists as consulted on one day:
+\begin{itemize}
+\item Allecijfers.nl;
+\item the Buurtatlas;
+\item the key indicators of \textit{Sport en Bewegen in Cijfers}, which include the \textquotedblleft{}beweegvriendelijke omgeving\textquotedblright{} index. RIVM computes this 0--100 index per municipality and per neighbourhood from open data on sport accommodations, sport and play places, distance to facilities, and recreational green and blue space (RIVM/Mulier Instituut, kernindicator beweegvriendelijke omgeving);
+\item the Atlas Leefomgeving.
+\end{itemize}
+In the reference case the result is two full-page infographics; their file metadata names Adobe Express as the tool. In the synthetic Buurtscan dataset, the same kind of figures sit in one Word document per neighbourhood. That document has two tables: overweight, sport participation, meeting the physical-activity guidelines and the index, against municipality and country; and the index's four sub-scores, against the district. It also has charts of age groups, housing types, migration background and income, and lists its sources.
+
+\textbf{Data perspective: maps.} The maps in Table~\ref{tab:rules-maps} reach the reporting step as finished images (PNG, 300\,dpi). Each one has a title, a legend, a scale bar, a north arrow and the InnoBeweegLab logo, and its file name carries a date. For the reporting tool the maps are an \textit{input}: the user supplies them, and the tool has to analyse them the way the reference report does. Making the maps is outside the tool's scope. What that analysis requires, and what the literature says about doing it automatically, is the subject of Sections~\ref{sec:res-maps} and~\ref{sec:m-maps}.
+
+\textbf{Expert perspective.} InnoBeweegLab professionals walk through selected neighbourhoods and score them on site. In the reference case there were three neighbourhoods, chosen because the development area is easy to reach from them, and the walk followed a planned route laid out in a separate route document. The assessment uses indicators fixed in advance within the six themes, such as quantity, variation, target group, maintenance, traffic safety, social safety and side facilities. Each indicator has numbered statements. Every assessor scores every statement from 1 to 5, and remarks are recorded per statement. The resulting files are:
+\begin{itemize}
+\item one workbook per neighbourhood. One sheet has a column per assessor (five in the reference case), an average, a column headed \textquotedblleft{}Definitief\textquotedblright{} (final) and the remarks. A second sheet groups the statements by theme and indicator, with averages;
+\item a totals workbook. It averages each statement and indicator over the neighbourhoods and collects the remarks per neighbourhood and theme.
+\end{itemize}
+The totals are shown as a \textit{sunburst} of 33 indicators across the six themes, read from a score of 1 at the centre to 5 at the outer ring. A Photoshop working file of the sunburst is part of the dataset. The expert files of the synthetic Buurtscan dataset are simpler: a single sheet with one assessment per statement, headed \textquotedblleft{}Beoordeling door InnoBeweegLab\textquotedblright{}.
+
+\textbf{Resident perspective.} The reference case used three instruments:
+\begin{itemize}
+\item digital questionnaires for residents aged 65 and over and, at the municipality's request, for future residents who had already bought a home in the development and for young adults aged 18--27;
+\item a resident meeting;
+\item a questionnaire for professionals active in the area (\textquotedblleft{}stakeholders\textquotedblright{}).
+\end{itemize}
+The resident workbook holds the following (the stakeholders' closed answers are referred to a separate file that is not in the dataset):
+\begin{itemize}
+\item \textbf{Closed questions} are tallied per group, as a count per answer option. Examples are importance ratings and multiple-choice questions on what residents like or miss.
+\item \textbf{Open answers} are coded per theme (the six themes plus \textquotedblleft{}Algemeen\textquotedblright{}, general) into three types: a \textit{need} (behoefte), a \textit{barrier} (belemmering) or a \textit{positive finding} (positieve bevinding). Each code carries the number of times it was given.
+\item A second sheet holds a merged version of the coding, with fewer codes and higher counts.
+\end{itemize}
+The synthetic Buurtscan questionnaire file is different: a respondent-level export with one row per respondent and a row of totals per answer column.
+
+\subsection{From data to report}\label{sec:process-writing}
+
+The reference report (41 pages) was written in Microsoft Word, according to its PDF metadata. Its colophon credits one author and, separately, a designer for design and layout. Its chapters are:
+\begin{itemize}
+\item a summary (Samenvatting) and the reason for the study (Aanleiding);
+\item a method chapter that explains the BVO model, the three perspectives, and the RIVM rules with the map for each;
+\item a results chapter: two pages of demographic infographics, then one section per theme;
+\item conclusions, one paragraph per theme;
+\item recommendations: general approaches first, then concrete measures per theme, illustrated with inspiration pictures and the inspiration map;
+\item a list of sources and two appendices: every map beside the rule it tests, and the sunburst.
+\end{itemize}
+
+Each theme section follows the same order. It starts with the data perspective (the map and the rule), continues with the experts' scores and remarks, then gives the residents' and stakeholders' view, and ends with a synthesis. The residents' part uses the survey counts and the coded needs and barriers; in four of the six themes it includes a bar chart drawn from the survey counts. Field photos illustrate every theme. Figure~\ref{fig:process} summarises how the three perspectives feed this structure.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize,
+  box/.style={draw=navy, fill=light, rounded corners=2pt, align=center, text width=3.0cm, minimum height=1.0cm, inner sep=3pt},
+  resbox/.style={draw=teal, fill=white, rounded corners=2pt, align=center, text width=3.0cm, minimum height=0.9cm, inner sep=3pt},
+  rep/.style={draw=amber, fill=light, rounded corners=2pt, align=center, text width=14.2cm, minimum height=0.9cm, inner sep=3pt},
+  lab/.style={font=\scriptsize\bfseries, text=navy, align=center, text width=3.2cm},
+  arr/.style={-{Stealth[length=2mm]}, draw=inkgray}
+]
+\node[lab] (hD) at (0,0) {Data perspective:\\demographics};
+\node[lab] (hM) at (3.75,0) {Data perspective:\\RIVM rule tests};
+\node[lab] (hE) at (7.5,0) {Expert perspective};
+\node[lab] (hR) at (11.25,0) {Resident perspective};
+\node[box, below=0.2cm of hD] (d1) {Public sources (Allecijfers, Buurtatlas, Sport en Bewegen in Cijfers, Atlas Leefomgeving)};
+\node[box, below=0.2cm of hM] (m1) {Thematic maps, one per tested rule (supplied as finished images)};
+\node[box, below=0.2cm of hE] (e1) {Observation walk along a planned route};
+\node[box, below=0.2cm of hR] (r1) {Questionnaires, resident meeting, stakeholder questionnaire};
+\node[box, below=0.35cm of d1] (d2) {Figures per neighbourhood vs.\ municipality and country};
+\node[box, below=0.35cm of m1] (m2) {Map images (PNG) with legend and neighbourhood borders};
+\node[box, below=0.35cm of e1] (e2) {Excel: statements scored 1--5 per assessor, remarks, totals};
+\node[box, below=0.35cm of r1] (r2) {Excel: tallies per group; open answers coded by theme and type};
+\node[resbox, below=0.35cm of d2] (d3) {Infographic pages (Adobe Express)};
+\node[resbox, below=0.35cm of m2] (m3) {Maps in the theme text and in Appendix 1};
+\node[resbox, below=0.35cm of e2] (e3) {Scores and remarks per theme; sunburst (Appendix 2)};
+\node[resbox, below=0.35cm of r2] (r3) {Counts; coded needs, barriers and positives; bar charts};
+\node[rep, below=0.6cm of $(m3.south)!0.5!(e3.south)$] (w) {Report written in Word: per theme data $\rightarrow$ experts $\rightarrow$ residents $\rightarrow$ synthesis; conclusions; recommendations; then design and layout; PDF to the client};
+\foreach \a/\b in {d1/d2,d2/d3,m1/m2,m2/m3,e1/e2,e2/e3,r1/r2,r2/r3} \draw[arr] (\a) -- (\b);
+\foreach \a in {d3,m3,e3,r3} \draw[arr] (\a.south) -- (\a.south |- w.north);
+\end{tikzpicture}
+\caption{How a Wijkscan report is built today, as far as the reference report and its dataset show. Shaded boxes are collection and processing steps; white boxes are what reaches the report. Tools are named only where the files show them (Excel and Word files; Adobe Express in the infographics' metadata). Who does each step is not documented in this material.}\label{fig:process}
+\end{figure}
+
+Two documents of writing rules came with the synthetic dataset. One is an internal writing guide dated November 2025. Its checklist asks for a message that fits in one sentence, B1-level language, sentences of at most 20 words, active voice, the essence first, and one topic per paragraph. The other is a list of ten textual rules: factually accurate, clear, suited to the audience, concise, free of errors, logically structured, active, concrete, without needless repetition, and with a clear purpose.
+
+The files of the reference case carry dates in their names or metadata:
+\begin{itemize}
+\item the expert results: March 2026;
+\item the online sources: consulted on 1 April 2026;
+\item the maps: 6 and 13 May 2026;
+\item the sunburst: May 2026;
+\item the inspiration map: 9 June 2026;
+\item the final PDF: 23 June 2026.
+\end{itemize}
+
+\subsection{Where the time and the judgement go}\label{sec:process-effort}
+
+My notes of the first stakeholder meeting record the following:
+\begin{itemize}
+\item expert data is collected in Excel files;
+\item residents' responses are written down and connected with Excel;
+\item analysing and interpreting all this data takes a lot of time;
+\item project data is stored as local files in OneDrive, and a database was under construction;
+\item around five people would use a tool like this.
+\end{itemize}
+My survey (Section~\ref{sec:res-survey}) puts numbers on this. Four of five respondents spend 21 hours or more per project on analysis and reporting. Qualitative analysis/coding and writing findings were each named twice as the most time-consuming part. Expert judgement is needed most for conclusions and recommendations, for combining the different kinds of data, for the qualitative data, and for finding and verifying sources. Researchers already draft with Microsoft Copilot, but its output cannot be traced back to the data (Section~\ref{sec:gap}).
+
+\subsection{What this means for the system}\label{sec:process-implications}
+
+Table~\ref{tab:report-sources} sets each element of the report against the files it comes from, and against whether a tool can trace it. Three consequences follow, and they shape the rest of this review.
+\begin{enumerate}
+\item \textbf{Most of the evidence is in spreadsheets.} Scores, remarks, coded answers and survey counts can be cited down to the cell. This is the case the citation-grounding literature in Section~\ref{sec:results} covers.
+\item \textbf{The rule tests are in images.} The data perspective's central statements are made by reading maps, so a text-only pipeline cannot ground them. The tool has to analyse the supplied maps the way the reference report does. Section~\ref{sec:res-maps} reviews the literature on that, and Section~\ref{sec:m-maps} the method I adopt.
+\item \textbf{Part of the report is not in any file.} Field photos, observations that never reached a spreadsheet, the outcomes of the resident meeting, the project context and literature all come from the research team. In a sample of 54 factual statements from the reference report's results chapter, 9 (17\%) relied on such knowledge. A traceable system must let the team record that knowledge with a source rather than invent it. The recommendations stay with the researcher, which matches the survey: only one of five respondents wants AI-drafted recommendations.
+\end{enumerate}
+
+\begingroup\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{3.6cm}|>{\raggedright\arraybackslash}p{5.4cm}|>{\raggedright\arraybackslash}p{5.2cm}|}
+\caption{Elements of the reference report, their source in InnoBeweegLab's files, and whether a tool can trace them to that source.}\label{tab:report-sources}\\
+\hline
+\cellcolor{navy}\textcolor{white}{\textbf{Report element}} & \cellcolor{navy}\textcolor{white}{\textbf{Source in the files}} & \cellcolor{navy}\textcolor{white}{\textbf{Traceable by a tool?}} \\ \hline
+\endfirsthead
+\hline
+\cellcolor{navy}\textcolor{white}{\textbf{Report element}} & \cellcolor{navy}\textcolor{white}{\textbf{Source in the files}} & \cellcolor{navy}\textcolor{white}{\textbf{Traceable by a tool?}} \\ \hline
+\endhead
+Theme sections: experts & scores and remarks in the expert workbooks & yes, to the cell \\ \hline
+\rowcolor{light}
+Theme sections: residents and stakeholders & tallies and coded answers in the resident workbook & yes, to the cell \\ \hline
+Bar charts & survey tallies & yes; the chart can be redrawn from the counts \\ \hline
+\rowcolor{light}
+RIVM rule tests & map images & only if the tool measures the map (Sections~\ref{sec:res-maps}, \ref{sec:m-maps}) \\ \hline
+Demographics & infographic images; the figures behind them are not in the dataset & only by reading the image, with confirmation by the researcher \\ \hline
+\rowcolor{light}
+Sunburst & totals workbook & yes; the chart is drawn from the workbook \\ \hline
+Field photos, walk observations not in a sheet, resident meeting, project context, literature & not in the files & only if the team records them with a source \\ \hline
+\rowcolor{light}
+Recommendations & the researcher's judgement, inspiration pictures & not generated; written by the researcher \\ \hline
+\end{longtable}
+\endgroup

@@ -1,0 +1,80 @@
+\section{Background}\label{sec:background}
+
+\subsection{The field, and how it got here}\label{sec:field}
+
+Citation-grounded generation descends from \textbf{Retrieval-Augmented Generation (RAG)} (Lewis et al., Facebook AI, NeurIPS 2020), which paired a parametric sequence-to-sequence model with non-parametric retrieval over a dense vector index specifically to make generation more factually grounded — the conceptual ancestor of nearly every method surveyed below. Three waves followed. First, \textbf{post-hoc correction} (RARR, 2022): let a model generate freely, then research and patch unsupported claims afterward. Second, \textbf{training the model itself to cite} (Self-RAG, 2024; FLARE, 2023): rather than always retrieving fixed passages, the model learns when to retrieve and emits citations and self-critique as part of generation. Third, \textbf{structured extraction before generation} (Auto-TA, GATOS, 2025): for qualitative-analysis use cases specifically, don't generate free text first — extract claims/codes tied to a source ID \textit{as the first step}, so traceability is built into the data structure rather than bolted onto the output. InnoBeweegLab's own pipeline (UC1's \texttt{SourceRecord} with a precise \texttt{locator} field, already implemented — see \texttt{innoweegbeg-ingestion}) follows this third pattern. In parallel, \textbf{automated factuality evaluation} matured from binary human judgments to fine-grained, atomic-fact decomposition (FActScore, RAGAS, SAFE, 2023–2024) precise enough to replace much of the cost of human evaluation, and \textbf{production-system audits} (CJR/Tow Center, Stanford RegLab, \textquotedblleft{}Cited but Not Verified\textquotedblright{}) started documenting, repeatedly, that shipped citation features are not as reliable as they look.
+
+
+
+\subsection{Research gap and motivation}\label{sec:gap}
+
+Four limitations in the literature motivate my thesis's specific angle:
+
+
+
+\begin{enumerate}
+\item \textbf{Citation presence $\neq$ citation correctness}, and this is not a minor edge case — it is the single most consistent finding across every production-system audit reviewed (Section~\ref{sec:res-production}): 37–94\% error rates across generative search engines (CJR/Tow Center), >17\% hallucination despite \textquotedblleft{}hallucination-free\textquotedblright{} marketing in legal AI (Stanford RegLab), and factual accuracy as low as 39\% in deep-research agents even when link-validity is 94\%+ (\textquotedblleft{}Cited but Not Verified\textquotedblright{}). A system that merely attaches a citation to every sentence has not solved traceability; it has to be independently verified, not assumed.
+\item \textbf{LLM-as-judge verification is itself imperfect.} AttributionBench found even fine-tuned models plateau around 80\% macro-F1 at judging whether a citation supports a claim, and a bigger model (GPT-4) barely helped — meaning my evaluation design cannot rely purely on an LLM judge and needs either a structural/rule-based layer, human spot-checking, or both. Section~\ref{sec:res-evalmethod} surveys the broader literature on exactly why LLM-judges are unreliable and how that unreliability is measured, rather than treating this as a one-off finding from a single benchmark.
+\item \textbf{Local, zero-budget, traceable pipelines are a thin, citable gap.} Of the 27+ systems reviewed, only GATOS (Katz et al.) and its Nature HSSC 2026 peer-reviewed version are open-weight/locally-runnable; both were validated only on synthetic case-study data. A separate EDM 2025 paper (Kim et al.) applied the same GATOS workflow to real qualitative data, narrowing but not closing this gap — it still used hosted DeepSeek inference rather than a zero-budget, fully local setup. No system reviewed combines open-weight, locally-runnable, \textit{and} real-data-validated. Every other citation-grounding and factuality-evaluation method in the literature (ALCE, Self-RAG, FActScore, RAGAS, SAFE, AttributionBench) is demonstrated against hosted, typically large, models with no RAM/hardware constraint discussed at all. This is precisely InnoBeweegLab's situation (16GB RAM, no dedicated GPU, zero budget) and precisely what my thesis is positioned to fill — a traceable report-generation pipeline \textit{validated on real, if anonymised, InnoBeweegLab data}, not just synthetic benchmarks.
+\item \textbf{Images are outside the traceability methods reviewed.} Every citation-grounding and factuality method above grounds text in text. InnoBeweegLab's data perspective, however, reaches the report as map images and infographics (Section~\ref{sec:process}). Vision-language models read printed numbers well, but they are weakest at exactly the spatial judgements those maps encode, such as whether a building lies inside a distance zone (Section~\ref{sec:res-maps}). A traceable pipeline therefore needs a way to turn a supplied map into citable evidence, which none of the reviewed systems provides.
+\end{enumerate}
+
+\begin{calloutbox}{teal}{Field-phase finding}
+
+Beyond the literature, I have direct field evidence the gap is real, not hypothetical: InnoBeweegLab's researchers already use the Microsoft Copilot desktop app to draft reports, but report that its output cannot be traced back to source data, and — per my own stakeholder survey (Section~\ref{sec:res-survey}) — traceability and human review score among the highest-importance items of anything I asked about, even though almost nobody flags tracing sources as a \textit{current} problem.
+
+\end{calloutbox}
+
+\subsection{Key overview figures}\label{sec:figures}
+
+\textbf{Figure 1 — The field, by decomposition strategy and deployment context.} The methods below either decompose generation into independently-verifiable atomic units or they don't, and they are validated either against production/hosted-scale deployments or against something closer to InnoBeweegLab's local, zero-budget constraint. Nearly everything sits in the top-right; almost nothing sits in the bottom-right — which is exactly the gap Section~\ref{sec:gap} names.
+
+
+
+\begingroup\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{3.4cm}|>{\raggedright\arraybackslash}p{5.5cm}|>{\raggedright\arraybackslash}p{5.5cm}|}
+\hline
+\cellcolor{navy}\textcolor{white}{\textbf{}} & \cellcolor{navy}\textcolor{white}{\textbf{Decomposes into atomic claims/codes}} & \cellcolor{navy}\textcolor{white}{\textbf{Does not decompose (whole-answer judgment)}} \\ \hline
+\endfirsthead
+\hline
+\cellcolor{navy}\textcolor{white}{\textbf{}} & \cellcolor{navy}\textcolor{white}{\textbf{Decomposes into atomic claims/codes}} & \cellcolor{navy}\textcolor{white}{\textbf{Does not decompose (whole-answer judgment)}} \\ \hline
+\endhead
+\textbf{Validated at production/hosted scale} & ALCE $\cdot$ FActScore $\cdot$ RAGAS $\cdot$ SAFE $\cdot$ AttributionBench $\cdot$ PaperTrail $\cdot$ Auto-TA $\cdot$ Anthropic Citations API & RARR $\cdot$ Self-RAG $\cdot$ FLARE $\cdot$ CJR/Tow Center audit $\cdot$ Stanford RegLab study \\ \hline
+\rowcolor{light}
+\textbf{Validated local/zero-budget or small-scale} & GATOS $\cdot$ Nature HSSC 2026 $\cdot$ \textit{(my own evaluation harness, Section~\ref{sec:m-harness})} & \textit{(no method found)} \\ \hline
+\end{longtable}
+\endgroup
+
+\textbf{Figure 2 — The convergent verification pattern.} Regardless of single-pass vs. multi-agent architecture (SQ3's open empirical question — see Section~\ref{sec:m-reference}), every rigorous method in Figure 1's left column follows the same four-step shape:
+
+
+
+\begin{calloutbox}{amber}{Pipeline pattern}
+
+\centering Ingest source data $\rightarrow$ Draft claims $\rightarrow$ Decompose into atomic, independently-checkable units $\rightarrow$ Verify each unit against its source $\rightarrow$ (Human validates before publishing)
+
+\end{calloutbox}
+
+This is the architecture InnoBeweegLab's own pipeline already follows by construction (UC1's \texttt{SourceRecord.locator}), and it is why the evaluation harness I built for this thesis (Section~\ref{sec:m-harness}) scores at the level of individual claims and their cited source-record ids, not whole-document judgments. The fully implemented version of this pipeline — with built (UC1) vs. planned (UC2–UC6) stages marked — is specified directly in the Requirements Engineering deliverable's domain/data model (SourceRecord $\rightarrow$ Claim $\rightarrow$ verification loop).
+
+
+
+\subsection{Relevant concepts and definitions}\label{sec:definitions}
+
+\begin{itemize}
+\item \textbf{Traceability} — the property that every claim in a generated report can be followed back to the specific source row, cell, or image it came from (my research question's central term; operationalised in UC1 as the \texttt{SourceRecord.locator} field).
+\item \textbf{Grounding / citation-grounding} — forcing generated text to be derivable from, and attributed to, specific supplied source material rather than the model's parametric memory (ZeroEntropy's practitioner taxonomy, grey-literature review \S1.2).
+\item \textbf{Faithfulness} — the fraction of a text's atomic claims that are fully supported by its cited source(s) (RAGAS/FActScore's definition; implemented structurally in \texttt{src/evaluation/metrics.py}'s \texttt{faithfulness} function).
+\item \textbf{Citation precision / recall} — of the ids a claim cites, what fraction are correct (precision); of the ids that actually support a claim, what fraction were cited (recall) (ALCE's definitions).
+\item \textbf{Hallucination vs. misgrounding vs. fabrication} — a hallucination is any factually unsupported claim; Stanford RegLab's operational split distinguishes \textbf{misgrounding} (a real citation is given, but it doesn't actually support the claim) from what my evaluation harness calls \textbf{fabrication} (no citation is given at all). The two have different causes and different fixes, so they are scored separately rather than pooled into one \textquotedblleft{}hallucination rate.\textquotedblright{}
+\item \textbf{Atomic claim decomposition} — breaking a generated text into its smallest independently-verifiable factual units before checking each one (FActScore's core method, also used by RAGAS, SAFE, PaperTrail, FacTool).
+\item \textbf{RAG (Retrieval-Augmented Generation)} — generation conditioned on passages retrieved from an external corpus at inference time (Lewis et al., 2020).
+\item \textbf{Single-pass vs. multi-agent pipeline} — whether report drafting is done by one model call (optionally with a built-in verification step) or by multiple specialised model calls/roles (e.g. a drafting agent and a separate grounding-checker agent, as in Auto-TA). SQ3 treats this as an open empirical question, not a premise (Section~\ref{sec:m-reference}).
+\item \textbf{Human-in-the-loop validation} — a required manual approval/correction step before any AI-drafted claim is published (UC4 in the requirements doc; the design constraint that both PaperTrail and \textquotedblleft{}Hide or Highlight\textquotedblright{} found is harder to make effective than it sounds — see Section~\ref{sec:res-hitl}).
+\item \textbf{LLM-as-judge} — using a language model itself to score another model's output (e.g. for faithfulness or relevance) rather than a human or a rule-based check; AttributionBench's $\sim$80\% F1 ceiling (Section~\ref{sec:gap}) is the key limitation to keep in mind whenever my own evaluation leans on it, and Section~\ref{sec:res-evalmethod} surveys the specific, named biases (position, verbosity, self-enhancement) documented for this technique.
+\item \textbf{Vision-language model (VLM)} — a model that takes an image together with text as input and produces text, for example Qwen2.5-VL; used here to read printed numbers from infographics (Section~\ref{sec:res-maps}).
+\item \textbf{Choropleth or thematic map} — a map on which areas or objects are coloured by class according to a legend; InnoBeweegLab's rule maps colour every building this way (Table~\ref{tab:rules-maps}).
+\item \textbf{Extract-then-reason} — first converting an image into a structured table with a dedicated extractor, then reasoning over the table rather than over the pixels (MapQA's V-MODE, DePlot; Section~\ref{sec:res-maps}).
+\item \textbf{Image registration} — aligning two images of the same scene so that their pixels correspond (Zitov\'a \& Flusser, 2003); used here to align a distance-zone map with a map that shows the same buildings (Section~\ref{sec:m-maps}).
+\item \textbf{Evaluation protocol / evaluation methodology} — the overall design of \textit{what} is measured, \textit{where} (on which data/benchmark), and \textit{how} (automatic metric, human rating, or LLM-judge), plus the reporting practices (documented criteria, repeated runs, stated sample size) that make the result trustworthy and reproducible rather than a one-off number (Chang et al. 2024's framework; see Section~\ref{sec:res-evalmethod}).
+\end{itemize}
