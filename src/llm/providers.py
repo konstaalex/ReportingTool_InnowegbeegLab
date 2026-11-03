@@ -82,6 +82,10 @@ class _Base:
                 continue
             res.latency_s = round(time.perf_counter() - t0, 3)
             res.retries = attempt
+            if res.error:      # found by the provider itself (e.g. the prompt was cut off): a retry cannot help
+                if request.json_schema is not None:
+                    res.parsed = extract_json(res.text)
+                return res
             if request.json_schema is not None:
                 res.parsed = extract_json(res.text)
                 if res.parsed is None and attempt < self.max_retries:
@@ -124,13 +128,41 @@ class OllamaProvider(_Base):
                 payload["format"] = request.json_schema if self._info.capabilities.structured_output else "json"
             data = _post_json(f"{self.base_url}/api/chat", payload, {}, self.timeout_s)
             tin, tout = data.get("prompt_eval_count"), data.get("eval_count")
+            chars = sum(len(m.content) for m in request.messages)
+            timings = {**(ollama_timings(data) or {}), "prompt_chars": chars, "done_reason": data.get("done_reason")}
             return GenerationResult(text=data.get("message", {}).get("content", ""), input_tokens=tin,
                                     output_tokens=tout, provider="ollama", model=self._info.model,
-                                    cost_eur=self._cost(tin, tout), timings=ollama_timings(data))
+                                    cost_eur=self._cost(tin, tout), timings=timings,
+                                    error=context_problem(chars, tin, tout, self.num_ctx, data.get("done_reason"),
+                                                          request.max_output_tokens))
         return self._with_retries(request, call)
 
     def available_models(self) -> list[str]:
         return ollama_pulled_models(self.base_url)
+
+
+# Text in these prompts takes 2.0-2.9 characters per token (measured on the Oss prompts with
+# qwen2.5:7b). Ollama does not refuse a prompt that is longer than the context window: it keeps the
+# first few tokens and the last half of the window and silently drops the rest. The week-1 pilot
+# found prompts of ~10,000-12,000 tokens arriving as 4,098 (6.5-8.2 characters per "token").
+MAX_CHARS_PER_TOKEN = 4.5
+
+
+def context_problem(prompt_chars: int, prompt_tokens: Optional[int], output_tokens: Optional[int],
+                    num_ctx: Optional[int], done_reason: Optional[str] = None,
+                    max_output_tokens: Optional[int] = None) -> Optional[str]:
+    """Why a local model's answer cannot be trusted as a draft of the WHOLE prompt, or None.
+    A stage with such a problem fails visibly (recorded, never dropped) instead of drafting
+    from a prompt the model only partly saw."""
+    if prompt_tokens and prompt_chars / prompt_tokens > MAX_CHARS_PER_TOKEN:
+        return (f"prompt cut off: {prompt_chars} characters arrived as only {prompt_tokens} tokens; the context "
+                f"window (num_ctx {num_ctx}) is too small and Ollama dropped the start of the prompt")
+    if prompt_tokens and output_tokens and num_ctx and prompt_tokens + output_tokens > num_ctx:
+        return (f"context window full: {prompt_tokens} prompt + {output_tokens} answer tokens > num_ctx {num_ctx}; "
+                f"Ollama dropped the start of the prompt while writing")
+    if done_reason == "length":
+        return f"answer cut off at the output limit ({max_output_tokens} tokens) before it was complete"
+    return None
 
 
 def ollama_timings(data: dict) -> Optional[dict]:

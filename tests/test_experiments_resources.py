@@ -37,6 +37,9 @@ class FakeOllama:
         self.loaded = [{"name": "qwen2.5:7b", "model": "qwen2.5:7b", "size": int(size_gb * GB),
                         "size_vram": int(vram_gb * GB), "context_length": 8192}]
         self.requests: list[tuple[str, dict]] = []
+        self.chat = {"message": {"content": '{"ok": true}'}, "prompt_eval_count": 1000, "eval_count": 200,
+                     "total_duration": 12_000_000_000, "load_duration": 2_000_000_000,
+                     "prompt_eval_duration": 4_000_000_000, "eval_duration": 5_000_000_000}
         outer = self
 
         class H(BaseHTTPRequestHandler):
@@ -67,10 +70,7 @@ class FakeOllama:
                     outer.loaded = [m for m in outer.loaded if m["name"] != payload["model"]]
                     self._send({"done": True})
                 elif self.path == "/api/chat":
-                    self._send({"message": {"content": '{"ok": true}'}, "prompt_eval_count": 1000,
-                                "eval_count": 200, "total_duration": 12_000_000_000,
-                                "load_duration": 2_000_000_000, "prompt_eval_duration": 4_000_000_000,
-                                "eval_duration": 5_000_000_000})
+                    self._send(outer.chat)
                 else:
                     self._send({})
 
@@ -148,6 +148,66 @@ class TestResources(unittest.TestCase):
             self.assertEqual(res.timings["eval_s"], 5.0)
         finally:
             srv.close()
+
+
+class TestContextWindow(unittest.TestCase):
+    """Week-1 pilot: Ollama silently cut prompts longer than num_ctx to 4,098 tokens."""
+
+    def test_context_problem_on_the_pilot_numbers(self):
+        from llm.providers import context_problem
+        self.assertTrue(context_problem(28926, 4098, 1491, 8192).startswith("prompt cut off"))     # Sporten, A
+        self.assertTrue(context_problem(22332, 8055, 964, 8192).startswith("context window full"))  # Ontmoeten, A
+        self.assertIsNone(context_problem(18049, 6643, 850, 8192))                                  # fitted
+        self.assertIsNone(context_problem(28926, 10500, 1491, 16384))                               # fits in 16K
+        self.assertIn("output limit", context_problem(26717, 9700, 3000, 16384, "length", 3000))
+
+    def test_cut_off_prompt_fails_the_stage_without_retry(self):
+        from drafting.pipelines import PipelineConfig, run_pipeline
+        from llm.providers import OllamaProvider
+        ws = _ws()
+        pack = ws.evidence(CASE)["Sporten"]
+        srv = FakeOllama()
+        claims = {"claims": [{"text": "Bewoners noemen sportplekken.", "type": "bevinding",
+                              "evidence_ids": [pack.items[0].evidence_id], "paragraph": 1}]}
+        srv.chat = {**srv.chat, "message": {"content": json.dumps(claims)}, "prompt_eval_count": 10, "eval_count": 50}
+        try:
+            info = ModelInfo("local_qwen7b", "ollama", "qwen2.5:7b", "local", Capabilities(structured_output=True))
+            p = OllamaProvider(info, base_url=srv.url, num_ctx=8192, max_retries=1)
+            draft = run_pipeline(pack, PipelineConfig(pipeline_id="naive", case_label="Test"), p)
+            chats = [r for r in srv.requests if r[0] == "/api/chat"]
+        finally:
+            srv.close()
+        self.assertEqual(len(chats), 1)                                   # no retry: it would be cut off again
+        self.assertEqual(draft.claims, [])                                # never drafted from a partial prompt
+        self.assertTrue(any("prompt cut off" in e for e in draft.errors), draft.errors)
+        self.assertFalse(draft.stages[0].parsed_ok)
+        self.assertGreater(draft.stages[0].timings["prompt_chars"], 0)
+
+    def test_conclusions_get_a_larger_output_limit(self):
+        from drafting.pipelines import PipelineConfig, run_pipeline
+        from evidence.models import CONCLUSIES
+        from llm.base import GenerationResult
+        seen = []
+
+        class Capture:
+            model_info = ModelInfo("cap", "ollama", "cap", "local", Capabilities(structured_output=True))
+
+            def generate(self, req):
+                seen.append((req.task, req.max_output_tokens))
+                return GenerationResult(text='{"claims": []}', parsed={"claims": []}, provider="ollama", model="cap")
+
+        packs = _ws().evidence(CASE)
+        cfg = PipelineConfig(pipeline_id="naive", case_label="Test")
+        run_pipeline(packs[CONCLUSIES], cfg, Capture())
+        run_pipeline(packs["Sporten"], cfg, Capture())
+        self.assertEqual(dict(seen), {"conclusions": 3000, "naive_section": 1800})
+
+    def test_drafting_models_have_a_16k_context_within_the_memory_limit(self):
+        from llm.registry import list_models, selected_models, validate_model_config
+        models = list_models()
+        for mid in selected_models("drafting"):
+            self.assertEqual(models[mid]["num_ctx"], 16384, mid)
+            self.assertEqual(validate_model_config(mid), [], mid)
 
 
 class TestExperimentConfig(unittest.TestCase):

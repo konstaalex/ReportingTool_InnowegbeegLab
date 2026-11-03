@@ -1,6 +1,13 @@
 # Model registry (UC5). Pipelines refer to models only by these ids.
 # Local candidates are sized for the 16 GB / CPU-only target laptop (NFR5);
-# ram_gb_estimate = rough resident memory at Q4_K_M incl. an 8k context.
+# ram_gb_estimate = rough resident memory at Q4_K_M incl. the context (num_ctx).
+#
+# num_ctx = 16384 for the three drafting models (week-1 pilot, 3 Nov 2026): with 8192,
+# the single-prompt sections of the Oss case (~10,000-12,000 tokens) did not fit and
+# Ollama silently dropped the start of the prompt. The context costs memory (KV cache,
+# f16): per 1,000 tokens about 0.06 GB for qwen2.5:7b (28 layers x 4 KV heads), 0.15 GB
+# for qwen3:8b (36 x 8) and 0.13 GB for llama3.1:8b (32 x 8). The run records measure
+# the real peak (llm/resources.py); the estimates below are only the pre-run check.
 # Check what is downloaded with `python -m llm.cli check` (or `ollama list`).
 
 [hardware]
@@ -32,25 +39,25 @@ provider = "ollama"
 model = "qwen2.5:7b"             # 4.7 GB download
 location = "local"
 base_url = "http://localhost:11434"
-num_ctx = 8192
-ram_gb_estimate = 6.5
+num_ctx = 16384                  # measured at 8192: 4.9 GB (Ollama) / 5.1 GB (RSS) on an M1 Pro
+ram_gb_estimate = 7.0
 capabilities = { structured_output = true, context_tokens = 32768, reliable_token_usage = true }
 
 [model.local_qwen3_8b]           # newer generation; a "thinking" model -> thinking switched off for drafting
 provider = "ollama"
 model = "qwen3:8b"               # 5.2 GB download
 location = "local"
-num_ctx = 8192
+num_ctx = 16384
 think = false
-ram_gb_estimate = 7.0
+ram_gb_estimate = 8.0
 capabilities = { structured_output = true, context_tokens = 32768, reliable_token_usage = true }
 
 [model.local_llama8b]            # widely used reference model
 provider = "ollama"
 model = "llama3.1:8b"            # 4.9 GB download
 location = "local"
-num_ctx = 8192
-ram_gb_estimate = 7.0
+num_ctx = 16384
+ram_gb_estimate = 7.5
 capabilities = { structured_output = true, context_tokens = 131072, reliable_token_usage = true }
 
 [model.local_gemma12b]           # bigger: Mac comparison only, too large for the 16 GB target

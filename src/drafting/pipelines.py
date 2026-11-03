@@ -71,6 +71,9 @@ class PipelineConfig:
     temperature: float = 0.2
     seed: Optional[int] = 42
     max_output_tokens: int = 1800
+    # Conclusies and Aanleiding draw on every theme: their answer is longer. 1800 cut the
+    # conclusions off mid-JSON in the week-1 pilot (docs/experiments/week1-pilot.md).
+    max_output_tokens_single_call: int = 3000
     case_label: str = ""
     allow_resident_text_to_hosted: bool = False
     include_quotes: bool = True          # drop resident quote evidence entirely (e.g. for hosted runs)
@@ -117,11 +120,12 @@ def _normalise_claims(raw: list, prefix: str, start: int, stage: str, default_pa
 
 
 def _call(provider: LLMProvider, cfg: PipelineConfig, task: str, user: str, schema: dict,
-          items: list[Evidence], draft: SectionDraft) -> Optional[dict]:
+          items: list[Evidence], draft: SectionDraft, max_output_tokens: Optional[int] = None) -> Optional[dict]:
     req = GenerationRequest(
         task=task,
         messages=[Message("system", system_prompt(cfg.prompt_version)), Message("user", user)],
-        temperature=cfg.temperature, max_output_tokens=cfg.max_output_tokens, json_schema=schema, seed=cfg.seed,
+        temperature=cfg.temperature, max_output_tokens=max_output_tokens or cfg.max_output_tokens, json_schema=schema,
+        seed=cfg.seed,
         contains_resident_free_text=any(e.contains_free_text for e in items),
     )
     info = provider.model_info
@@ -279,7 +283,8 @@ def single_call_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: Pipelin
     user = render(cfg.prompt_version, prompt, case_label=cfg.case_label or pack.case_id,
                   unavailable="\n".join(f"- {u}" for u in pack.unavailable) or "- (niets)",
                   evidence=_evidence_block(sel.items))
-    parsed = _call(provider, cfg, prompt, user, CLAIMS_SCHEMA, sel.items, draft)
+    parsed = _call(provider, cfg, prompt, user, CLAIMS_SCHEMA, sel.items, draft,
+                   max_output_tokens=cfg.max_output_tokens_single_call)
     if parsed:
         draft.claims = _normalise_claims(parsed.get("claims", []), _prefix(pack.section), 1, prompt)
     return draft
