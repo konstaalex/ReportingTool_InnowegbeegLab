@@ -60,7 +60,7 @@ def get_provider(model_id: str):
     kw = {"max_retries": cfg.get("max_retries", 1), "timeout_s": cfg.get("timeout_s", 600.0)}
     if cfg["provider"] == "ollama":
         return OllamaProvider(info, base_url=cfg.get("base_url", "http://localhost:11434"),
-                              num_ctx=cfg.get("num_ctx"), think=cfg.get("think"), **kw)
+                              num_ctx=cfg.get("num_ctx"), think=cfg.get("think"), num_gpu=cfg.get("num_gpu"), **kw)
     if cfg["provider"] == "openai_compatible":
         return OpenAICompatibleProvider(info, base_url=cfg["base_url"], api_key_env=cfg.get("api_key_env"), **kw)
     if cfg["provider"] == "fake":

@@ -96,11 +96,14 @@ class _Base:
 
 class OllamaProvider(_Base):
     def __init__(self, info: ModelInfo, base_url: str = "http://localhost:11434", num_ctx: Optional[int] = None,
-                 think: Optional[bool] = None, **kw):
+                 think: Optional[bool] = None, num_gpu: Optional[int] = None, **kw):
         super().__init__(info, **kw)
         self.base_url = base_url.rstrip("/")
         self.num_ctx = num_ctx or info.capabilities.context_tokens
         self.think = think   # None = model default; False switches off "thinking" models (qwen3, deepseek-r1)
+        # None = Ollama decides; 0 = no model layers on the GPU, i.e. CPU only (closest to the
+        # 16 GB CPU-only target laptop when measuring on a Mac with a GPU; SQ4)
+        self.num_gpu = num_gpu
 
     def generate(self, request: GenerationRequest) -> GenerationResult:
         def call() -> GenerationResult:
@@ -112,7 +115,8 @@ class OllamaProvider(_Base):
                 "messages": messages,
                 "stream": False,
                 "options": {"temperature": request.temperature, "num_predict": request.max_output_tokens,
-                            "num_ctx": self.num_ctx, **({"seed": request.seed} if request.seed is not None else {})},
+                            "num_ctx": self.num_ctx, **({"seed": request.seed} if request.seed is not None else {}),
+                            **({"num_gpu": self.num_gpu} if self.num_gpu is not None else {})},
             }
             if self.think is not None:
                 payload["think"] = self.think
@@ -122,11 +126,26 @@ class OllamaProvider(_Base):
             tin, tout = data.get("prompt_eval_count"), data.get("eval_count")
             return GenerationResult(text=data.get("message", {}).get("content", ""), input_tokens=tin,
                                     output_tokens=tout, provider="ollama", model=self._info.model,
-                                    cost_eur=self._cost(tin, tout))
+                                    cost_eur=self._cost(tin, tout), timings=ollama_timings(data))
         return self._with_retries(request, call)
 
     def available_models(self) -> list[str]:
         return ollama_pulled_models(self.base_url)
+
+
+def ollama_timings(data: dict) -> Optional[dict]:
+    """Ollama reports durations in nanoseconds: loading the model, reading the prompt
+    (prompt_eval) and writing the answer (eval). On a CPU, reading a long prompt can take
+    longer than writing the answer, so both speeds are kept."""
+    ns = {k: data.get(f"{k}_duration") for k in ("total", "load", "prompt_eval", "eval")}
+    if not any(ns.values()):
+        return None
+    out = {f"{k}_s": round(v / 1e9, 3) for k, v in ns.items() if v}
+    if ns["prompt_eval"] and data.get("prompt_eval_count"):
+        out["prompt_tokens_per_s"] = round(data["prompt_eval_count"] / (ns["prompt_eval"] / 1e9), 1)
+    if ns["eval"] and data.get("eval_count"):
+        out["output_tokens_per_s"] = round(data["eval_count"] / (ns["eval"] / 1e9), 1)
+    return out
 
 
 def ollama_pulled_models(base_url: str = "http://localhost:11434") -> list[str]:

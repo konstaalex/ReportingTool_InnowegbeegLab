@@ -64,6 +64,7 @@ class StageLog:
     raw_output: Optional[str] = None     # kept for audit / replay
     evidence_sent: list[str] = field(default_factory=list)
     privacy: Optional[str] = None        # what left the device, if anything
+    timings: Optional[dict] = None       # provider-reported: load_s, prompt_eval_s, eval_s, tokens per second
 
     def to_dict(self) -> dict:
         return asdict(self)

@@ -4,7 +4,7 @@ Research prototype for the InnoBeweegLab master's project: heterogeneous Buurtsc
 data (expert walk, resident questionnaire, demographics, RIVM rules) → traceable,
 reviewed draft report. Design and decisions: `docs/design/reporting-tool-design.md`.
 Analysis artifacts (personas, use cases, user stories, requirements, test cases, domain
-model) with their implementation status: `docs/analysis/` (PDF and LaTeX source).
+model) with their implementation status: `docs/analysis/` (Markdown, PDF and LaTeX source).
 
 ```
 source cell ─► SourceRecord ─► Evidence item (deterministic) ─► drafted claim (LLM)
@@ -31,11 +31,17 @@ ollama pull qwen2.5:7b
 python -m llm.cli check                                       # which configured models are downloaded
 python -m llm.cli smoke local_qwen7b                          # one tiny JSON call: works? how fast?
 
-# 3. experiments (run records in workspace/runs/)
-python -m experiments.cli run SMOKE --workspace workspace     # fake model: plumbing only
+# 3. experiments: full reports of the Oss case (needs step 3b), each scored against the original
+#    report. Definitions: config/experiments.toml. Hypotheses, thresholds and which runs count:
+#    docs/experiments/hypotheses-and-thresholds.md. Records in workspace/runs/, reports in
+#    workspace/reports/euterpepark-oss/. Every record keeps time, tokens and the peak memory of
+#    the model server (Ollama), checked against 60% of 16 GB.
+python -m experiments.cli run SMOKE --workspace workspace     # fake model, one section: plumbing only
 python -m experiments.cli run E0    --workspace workspace     # template baseline, no model
-python -m experiments.cli run E1 --workspace workspace --section Sporten --seed 42
-python -m experiments.cli summary --workspace workspace
+python -m experiments.cli run E2 --workspace workspace --seed 42 --cold --tag pilot-week1   # one report, not counted
+python -m experiments.cli run E2 --workspace workspace --seed 42 --cold --cpu-only          # model kept off the GPU
+python -m experiments.cli summary --workspace workspace       # minutes per report, model GB, scores
+bash scripts/week1_timing.sh                                  # week 1: pull the models, time template, A and B
 
 # 3b. real Oss case (Wijkscan layout) + images: maps measured without a model;
 #     infographics read by a local vision model (ollama pull qwen2.5vl:7b) and confirmed in the UI
@@ -70,7 +76,7 @@ python -m reports.cli adopt --case euterpepark-oss --run <run id> --reviewer <na
 INNO_WORKSPACE=workspace INNO_DATA_DIR="$DATA" streamlit run src/ui/streamlit_app.py
 
 # tests (synthetic fixtures only; no research data needed)
-python -m unittest tests.test_buurtscan_ingestion tests.test_evidence_and_verification tests.test_pipelines_review_export tests.test_imaging_and_oss tests.test_notes_zones_conclusions tests.test_reports
+python -m unittest tests.test_buurtscan_ingestion tests.test_evidence_and_verification tests.test_pipelines_review_export tests.test_imaging_and_oss tests.test_notes_zones_conclusions tests.test_reports tests.test_experiments_resources
 python tests/run_stdlib.py && python tests/run_stdlib_evaluation.py
 ```
 

@@ -53,11 +53,39 @@ def preflight(provider) -> None:
             raise RuntimeError(f"model {tag} is not downloaded in Ollama; run: ollama pull {tag}")
 
 
+def _stage_timings(stages) -> dict:
+    """Sum of the provider-reported timings over model calls (seconds), if the provider reports them."""
+    keys = ("load_s", "prompt_eval_s", "eval_s")
+    tot = {k: 0.0 for k in keys}
+    seen = False
+    for s in stages:
+        t = getattr(s, "timings", None) or {}
+        for k in keys:
+            if t.get(k):
+                tot[k] += t[k]
+                seen = True
+    return {k: round(v, 2) for k, v in tot.items()} if seen else {}
+
+
 def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str = "staged",
                         prompt_version: str = "v2", sections: Optional[list[str]] = None, seed: int = 42,
                         selection: str = "all", render: bool = True, pdf: bool = False,
-                        progress: Optional[Callable[[str], None]] = None) -> dict:
-    """Draft every section with one model (or the template baseline when model_id is None/'template')."""
+                        progress: Optional[Callable[[str], None]] = None, temperature: float = 0.2,
+                        include_quotes: bool = True, allow_resident_text_to_hosted: bool = False,
+                        cpu_only: bool = False, cold: bool = False, tag: Optional[str] = None,
+                        experiment_id: Optional[str] = None) -> dict:
+    """Draft every section with one model (or the template baseline when model_id is None/'template').
+
+    cpu_only: tell Ollama to keep every model layer off the GPU (num_gpu 0), to approximate the
+              16 GB CPU-only target laptop on a machine that has a GPU (SQ4).
+    cold:     unload all Ollama models first, so the time includes loading the model and the
+              memory measured is this run's own.
+    tag:      free label kept in the record, e.g. 'pilot-week1' for runs that do not count.
+    """
+    from experiments.provenance import fingerprints, git_commit
+    from llm.providers import OllamaProvider
+    from llm.resources import MemoryMonitor, machine_info, ollama_version, unload_ollama_models
+
     if not model_id or model_id == TEMPLATE:
         model_id, pipeline, provider = None, TEMPLATE, None
     else:
@@ -66,8 +94,21 @@ def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str
             raise ValueError("; ".join(problems))
         provider = get_provider(model_id)
         preflight(provider)
+    ollama_url = provider.base_url if isinstance(provider, OllamaProvider) else None
+    if cpu_only and not ollama_url:
+        cpu_only = False                      # only meaningful for a local Ollama model
+    if cpu_only:
+        provider.num_gpu = 0
+        provider.timeout_s = max(provider.timeout_s, 1800.0)   # a long prompt on a CPU can exceed 10 minutes
+    unloaded = unload_ollama_models(ollama_url) if (cold and ollama_url) else []
     label = model_id or TEMPLATE
-    run_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{label}-{pipeline}"
+    parts = [time.strftime("%Y%m%d-%H%M%S"), label, pipeline]
+    if selection != "all":
+        parts.append(selection.replace("top_k:", "top").replace(":", ""))
+    parts.append(f"s{seed}")
+    if cpu_only:
+        parts.append("cpu")
+    run_id = "-".join(parts)
     out = runs_dir(ws, case_id) / run_id
     (out / "drafts").mkdir(parents=True, exist_ok=True)
     packs = ws.evidence(case_id)
@@ -75,41 +116,56 @@ def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str
     drafts: dict[str, SectionDraft] = {}
     per_section: dict[str, dict] = {}
     t_run = time.perf_counter()
-    for sec in sections or REPORT_SECTIONS:
-        pack = packs.get(sec)
-        if pack is None or not pack.items:
-            per_section[sec] = {"skipped": "geen bewijsstukken"}
-            continue
-        if progress:
-            progress(f"{label}: {sec}")
-        cfg = PipelineConfig(pipeline_id=pipeline, prompt_version=prompt_version, selection=selection, seed=seed,
-                             case_label=ws.case_label(case_id))
-        t0 = time.perf_counter()
-        try:
-            draft = run_pipeline(pack, cfg, provider)
-        except Exception as exc:  # noqa: BLE001 - a failed section is recorded, never dropped
-            per_section[sec] = {"error": f"{type(exc).__name__}: {exc}"}
-            continue
-        wall = time.perf_counter() - t0
-        verify_section(draft, pack, index)
-        (out / "drafts" / f"{_slug(sec)}.json").write_text(json.dumps(draft.to_dict(), indent=2, ensure_ascii=False),
-                                                            encoding="utf-8")
-        drafts[sec] = draft
-        m = (draft.section_checks or {}).get("metrics", {})
-        per_section[sec] = {
-            "draft_id": draft.draft_id, "n_claims": len(draft.claims), "errors": draft.errors,
-            "grounded_rate": m.get("grounded_rate"), "unsupported_rate": m.get("unsupported_rate"),
-            "coverage_salient": m.get("coverage_salient"), "wall_s": round(wall, 2),
-            "model_calls": sum(1 for s in draft.stages if s.provider != "none"),
-            "tokens_in": sum(s.input_tokens or 0 for s in draft.stages),
-            "tokens_out": sum(s.output_tokens or 0 for s in draft.stages),
-        }
+    with MemoryMonitor(base_url=ollama_url) as monitor:
+        for sec in sections or REPORT_SECTIONS:
+            pack = packs.get(sec)
+            if pack is None or not pack.items:
+                per_section[sec] = {"skipped": "geen bewijsstukken"}
+                continue
+            if progress:
+                progress(f"{label}: {sec}")
+            cfg = PipelineConfig(pipeline_id=pipeline, prompt_version=prompt_version, selection=selection, seed=seed,
+                                 temperature=temperature, case_label=ws.case_label(case_id),
+                                 allow_resident_text_to_hosted=allow_resident_text_to_hosted,
+                                 include_quotes=include_quotes)
+            t0 = time.perf_counter()
+            try:
+                draft = run_pipeline(pack, cfg, provider)
+            except Exception as exc:  # noqa: BLE001 - a failed section is recorded, never dropped
+                per_section[sec] = {"error": f"{type(exc).__name__}: {exc}", "wall_s": round(time.perf_counter() - t0, 2)}
+                continue
+            wall = time.perf_counter() - t0
+            verify_section(draft, pack, index)
+            (out / "drafts" / f"{_slug(sec)}.json").write_text(json.dumps(draft.to_dict(), indent=2, ensure_ascii=False),
+                                                                encoding="utf-8")
+            drafts[sec] = draft
+            m = (draft.section_checks or {}).get("metrics", {})
+            per_section[sec] = {
+                "draft_id": draft.draft_id, "n_claims": len(draft.claims), "errors": draft.errors,
+                "grounded_rate": m.get("grounded_rate"), "unsupported_rate": m.get("unsupported_rate"),
+                "coverage_salient": m.get("coverage_salient"), "wall_s": round(wall, 2),
+                "model_calls": sum(1 for s in draft.stages if s.provider != "none"),
+                "tokens_in": sum(s.input_tokens or 0 for s in draft.stages),
+                "tokens_out": sum(s.output_tokens or 0 for s in draft.stages),
+                "timings": _stage_timings(draft.stages),
+            }
+        drafting_s = round(time.perf_counter() - t_run, 1)
+    resources = monitor.summary()
     claims = [c for d in drafts.values() for c in d.claims]
     statuses = [(c.verification or {}).get("status") for c in claims]
+    timings = _stage_timings([s for d in drafts.values() for s in d.stages])
+    tokens_in = sum(v.get("tokens_in", 0) for v in per_section.values())
+    tokens_out = sum(v.get("tokens_out", 0) for v in per_section.values())
     run = {
         "run_id": run_id, "case_id": case_id, "case_label": ws.case_label(case_id), "created_at": now_iso(),
         "model_id": model_id, "model": provider.model_info.to_dict() if provider else None,
         "pipeline": pipeline, "prompt_version": prompt_version, "selection": selection, "seed": seed,
+        "temperature": temperature, "tag": tag, "experiment_id": experiment_id,
+        "code_version": git_commit(), "fingerprints": fingerprints(prompt_version),
+        "machine": machine_info(),
+        "runtime": {"cpu_only": cpu_only, "cold_start": bool(cold and ollama_url), "unloaded_before": unloaded,
+                    "num_ctx": getattr(provider, "num_ctx", None), "timeout_s": getattr(provider, "timeout_s", None),
+                    "ollama_version": ollama_version(ollama_url) if ollama_url else None},
         "evidence_built_with": next(iter(packs.values())).built_with if packs else {},
         "sections": per_section,
         "totals": {
@@ -117,18 +173,26 @@ def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str
             "grounded_rate": round(statuses.count("grounded") / len(claims), 3) if claims else None,
             "weak_rate": round(statuses.count("weak") / len(claims), 3) if claims else None,
             "unsupported_rate": round(statuses.count("unsupported") / len(claims), 3) if claims else None,
-            "wall_s": round(time.perf_counter() - t_run, 1),
+            "wall_s": drafting_s,
             "model_calls": sum(v.get("model_calls", 0) for v in per_section.values()),
-            "tokens_in": sum(v.get("tokens_in", 0) for v in per_section.values()),
-            "tokens_out": sum(v.get("tokens_out", 0) for v in per_section.values()),
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            **({"model_" + k: v for k, v in timings.items()}),
+            **({"prompt_tokens_per_s": round(tokens_in / timings["prompt_eval_s"], 1)}
+               if timings.get("prompt_eval_s") else {}),
+            **({"output_tokens_per_s": round(tokens_out / timings["eval_s"], 1)} if timings.get("eval_s") else {}),
+            "model_peak_mb": resources.get("model_peak_mb"),
+            "within_memory_limit": resources.get("within_limit"),
             "failed_sections": [s for s, v in per_section.items() if v.get("error") or v.get("errors")],
         },
+        "resources": resources,
         "usable": bool(claims),
         "files": {},
     }
     if render and drafts:
         from export.content import from_drafts
         from export.docx_report import render_docx, to_pdf
+        t_render = time.perf_counter()
         content = from_drafts(ws, case_id, drafts, {
             "label": f"{label} · {pipeline}", "model": (provider.model_info.model if provider else "geen (template)"),
             "pipeline": pipeline, "prompt_version": prompt_version, "run_id": run_id,
@@ -140,6 +204,7 @@ def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str
             p = to_pdf(docx)
             if p:
                 run["files"]["pdf"] = p.name
+        run["totals"]["render_s"] = round(time.perf_counter() - t_render, 1)
     (out / "run.json").write_text(json.dumps(run, indent=2, ensure_ascii=False), encoding="utf-8")
     return run
 

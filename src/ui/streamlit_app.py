@@ -545,13 +545,18 @@ with tab_runs:
         from experiments.runner import summarise_runs  # noqa: E402
         rows = summarise_runs(ws)
         if rows:
-            st.dataframe([{"run": r["run_id"], "exp": r["experiment"], "pijplijn": r["pipeline"],
-                           "selectie": r["selection"], "model": r["model"], "n": r["summary"]["n"],
+            st.dataframe([{"run": r["run_id"], "exp": r["experiment"], "eenheid": r["unit"], "tag": r["tag"],
+                           "pijplijn": r["pipeline"], "selectie": r["selection"], "model": r["model"],
+                           "alleen CPU": r["cpu_only"], "n": r["summary"]["n"],
                            "mislukt": r["summary"]["failed"],
                            "onderbouwd": r["summary"].get("grounded_rate", {}).get("mean"),
                            "niet onderbouwd": r["summary"].get("unsupported_rate", {}).get("mean"),
-                           "dekking": r["summary"].get("coverage_salient", {}).get("mean"),
-                           "sec/sectie": r["summary"].get("wall_s", {}).get("mean")} for r in rows],
+                           "dekking (bewijs)": r["summary"].get("coverage_salient", {}).get("mean"),
+                           "dekking origineel (onderbouwbaar)":
+                               r["summary"].get("coverage_of_supportable", {}).get("mean"),
+                           "sec per eenheid": r["summary"].get("wall_s", {}).get("mean"),
+                           "modelgeheugen (GB)": round(r["model_peak_mb"] / 1024, 1) if r["model_peak_mb"] else None}
+                          for r in rows],
                          use_container_width=True, hide_index=True)
         else:
             st.info("Nog geen runs.")

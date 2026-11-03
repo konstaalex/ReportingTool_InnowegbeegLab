@@ -73,6 +73,7 @@ class GenerationResult:
     retries: int = 0
     cost_eur: float = 0.0
     error: Optional[str] = None
+    timings: Optional[dict] = None       # provider-reported seconds, e.g. Ollama: load_s, prompt_eval_s, eval_s
 
 
 class LLMProvider(Protocol):

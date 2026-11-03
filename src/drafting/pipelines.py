@@ -136,7 +136,7 @@ def _call(provider: LLMProvider, cfg: PipelineConfig, task: str, user: str, sche
         return None
     res = provider.generate(req)
     log.latency_s, log.input_tokens, log.output_tokens = res.latency_s, res.input_tokens, res.output_tokens
-    log.retries, log.raw_output = res.retries, res.text
+    log.retries, log.raw_output, log.timings = res.retries, res.text, res.timings
     if res.error or not isinstance(res.parsed, dict):
         log.parsed_ok = False
         log.error = res.error or "no JSON object in output"

@@ -6,6 +6,7 @@
     # one full report (every section, Word + optional PDF) drafted by one model, or the template baseline
     python -m reports.cli generate --case euterpepark-oss --model local_qwen7b --pipeline staged --pdf
     python -m reports.cli generate --case euterpepark-oss --model template
+    python -m reports.cli generate --case euterpepark-oss --model local_qwen7b --cold --cpu-only   # time on CPU only
 
     # draft with all three selected models (and the template baseline), then compare them with the original
     python -m reports.cli compare --case euterpepark-oss --generate --include-template
@@ -82,6 +83,10 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--prompt-version", default="v2")
     g.add_argument("--sections", nargs="*")
     g.add_argument("--pdf", action="store_true", help="also convert the Word file to PDF (needs LibreOffice)")
+    g.add_argument("--seed", type=int, default=42)
+    g.add_argument("--cpu-only", action="store_true", help="keep the model off the GPU (Ollama num_gpu 0)")
+    g.add_argument("--cold", action="store_true", help="unload Ollama models first (time includes loading)")
+    g.add_argument("--tag", help="label kept in the run record, e.g. pilot-week1")
 
     c = sub.add_parser("compare", help="evaluate the latest run of each model against the original, side by side")
     c.add_argument("--case", required=True)
@@ -136,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             run = generate_report_run(ws, args.case, args.model, pipeline=args.pipeline,
                                       prompt_version=args.prompt_version, sections=args.sections, pdf=args.pdf,
+                                      seed=args.seed, cpu_only=args.cpu_only, cold=args.cold, tag=args.tag,
                                       progress=lambda m: print(" ", m))
         except Exception as exc:  # noqa: BLE001
             print(f"cannot draft with {args.model}: {exc}", file=sys.stderr)
@@ -143,6 +149,10 @@ def main(argv: list[str] | None = None) -> int:
         t = run["totals"]
         print(f"\n{run['run_id']}: {t['n_claims']} claims in {t['sections_drafted']} sections, grounded "
               f"{_pct(t['grounded_rate'])}, unsupported {_pct(t['unsupported_rate'])}, {t['wall_s']} s")
+        if t.get("model_peak_mb"):
+            print(f"  model memory (peak): {t['model_peak_mb'] / 1024:.1f} GB, "
+                  f"{'within' if t.get('within_memory_limit') else 'OVER'} the limit of "
+                  f"{run['resources']['limit_mb'] / 1024:.1f} GB")
         if t["failed_sections"]:
             print("  failed:", ", ".join(t["failed_sections"]))
         print("  files:", ", ".join(run["files"].values()), "in", ws.p("reports", args.case, run["run_id"]))
@@ -152,8 +162,10 @@ def main(argv: list[str] | None = None) -> int:
         for r in list_runs(ws, args.case):
             t, ev = r["totals"], r.get("evaluation") or {}
             cov = _pct(ev.get("content", {}).get("coverage")) if ev else "not evaluated"
-            print(f"{r['run_id']:45s} {r.get('model_id') or 'template':16s} {r['pipeline']:9s} "
-                  f"claims {t['n_claims']:4d}  grounded {_pct(t['grounded_rate']):>4s}  coverage vs original: {cov}")
+            mem = f"{t['model_peak_mb'] / 1024:.1f} GB" if t.get("model_peak_mb") else "–"
+            print(f"{r['run_id']:52s} {r.get('model_id') or 'template':16s} {r['pipeline']:9s} "
+                  f"claims {t['n_claims']:4d}  grounded {_pct(t['grounded_rate']):>4s}  "
+                  f"{t['wall_s'] / 60:6.1f} min  model {mem:>7s}  coverage vs original: {cov}")
         return 0
 
     if args.cmd == "adopt":

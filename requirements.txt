@@ -8,3 +8,4 @@ matplotlib>=3.8       # report charts (Figuur n), drawn from survey evidence
 pdfplumber>=0.11      # evaluation: reading the original report (PDF) - never a drafting input
 streamlit>=1.32       # review UI only; core runs without it
 pytest>=8.0           # optional; tests also run with `python -m unittest`
+psutil>=5.9           # run records: memory of the model server (Ollama) and of the machine (NFR5)

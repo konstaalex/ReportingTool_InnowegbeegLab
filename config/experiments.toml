@@ -6,9 +6,19 @@
 #   all       -> every evidence item of the theme (no retrieval)
 #   top_k:N   -> N most salient items (deterministic salience ranking)
 # BM25 / vector retrieval are later conditions once a need is shown.
+#
+# Test case: euterpepark-oss, the only case with a human-written report to score
+# against (reports/evaluate.py). Hypotheses, thresholds and what counts:
+# docs/experiments/hypotheses-and-thresholds.md.
+#
+# unit = "report"  one full report per case x seed (every section that has evidence,
+#                  or report_sections when set), scored against the original report.
+# unit = "section" only `sections`, one draft each (quick checks such as SMOKE).
 
 [defaults]
-cases = ["passewaaij-tiel"]
+cases = ["euterpepark-oss"]
+unit = "report"
+evaluate = true                # word-overlap comparison with the original report
 sections = ["Sporten", "Actieve mobiliteit", "Formeel spelen", "Informeel spelen", "Ontmoeten", "Uitstraling"]
 model = "local_qwen7b"
 prompt_version = "v2"          # v1 kept unchanged for reproducibility of earlier runs
@@ -38,8 +48,16 @@ selection = "top_k:25"
 
 [experiment.SMOKE]
 description = "Plumbing check with the fake provider - NOT research output"
+unit = "section"
 pipeline = "staged"
 selection = "all"
 model = "fake"
 seeds = [42]
 sections = ["Sporten"]
+
+[experiment.SMOKE_REPORT]
+description = "Full-report plumbing check with the fake provider (time, memory, scoring) - NOT research output"
+pipeline = "staged"
+selection = "all"
+model = "fake"
+seeds = [42]
