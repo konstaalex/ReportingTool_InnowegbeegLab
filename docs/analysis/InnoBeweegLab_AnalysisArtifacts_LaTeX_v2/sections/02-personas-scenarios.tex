@@ -1,0 +1,59 @@
+\section{Personas and scenarios}\label{sec:personas}
+
+\subsection{Personas}
+
+Four personas, unchanged since 29 September. Each persona stands for a role in InnoBeweegLab's reporting work.
+
+\newcommand{\persona}[5]{%
+\begin{tcolorbox}[enhanced, breakable, colback=white, colframe=teal, boxrule=0.8pt, arc=2pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt, title={\textbf{#1}}, coltitle=white, colbacktitle=teal]
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash\bfseries}p{2.9cm}>{\raggedright\arraybackslash\hspace{0pt}}p{11.2cm}@{}}
+\textcolor{dknavy}{Role \& context} & #2 \\[3pt]
+\textcolor{dknavy}{Goals} & #3 \\[3pt]
+\textcolor{dknavy}{Pain points today} & #4 \\[3pt]
+\textcolor{dknavy}{Technical fluency} & #5 \\
+\end{tabular}
+\end{tcolorbox}}
+
+\persona{Anouk --- Lead Researcher / Report Author}
+{Writes the final Wijkscan report; synthesizes all three perspectives into themed narrative, conclusions, and recommendations (the role behind the Euterpepark report)}
+{Produce a defensible draft fast without losing control of the interpretation and recommendations; justify any sentence to a client or reviewer}
+{Manually re-reading dozens of survey rows, expert remark cells and map legends while writing narrative by hand; easy to lose track of which spreadsheet cell a sentence came from once several data rounds are merged}
+{Comfortable with Excel/Word, not a developer}
+
+\persona{Sam --- Field Researcher / Data Collector}
+{Runs the resident surveys, coordinates the expert walkthroughs, and codes open-text answers into the six-theme taxonomy (the ``Gecategoriseerde/Samengevoegde data'' work)}
+{Get raw survey and walkthrough data into a form the reporting tool can use, with minimal extra re-entry}
+{Recoding the same open-text answers by hand every round; uncertainty about whether ``categorized'' vs.\ ``merged'' data will be picked up correctly}
+{Comfortable with spreadsheets, no coding}
+
+\persona{Mika --- Reviewing Colleague / Second Reader}
+{A second InnoBeweegLab researcher who reads the draft before it goes to the client, checking that every notable claim is actually backed by evidence (the human-in-the-loop validation step)}
+{Verify claims quickly without redoing the analysis from scratch; catch overclaims or misattributed quotes before they reach the client}
+{Reviewers tend to run a full manual check regardless of how trustworthy an AI draft looks (the literature's ``accountability paradox'') --- so verification has to be genuinely fast, not just reassuring-looking}
+{Similar to Anouk; not a developer}
+
+\persona{Alex --- Lab Tech Lead / System Operator}
+{Installs and configures the tool: which model runs locally, which (if any) hosted API drafts sections, and what data is allowed to leave the laptop}
+{Keep the system running on zero budget and a standard laptop; switch providers/models without rebuilding the system; keep resident personal data off third-party clouds by default}
+{No dedicated IT department or infrastructure budget at InnoBeweegLab; must self-serve all setup}
+{Technically capable (this is Alex's own capstone build)}
+
+The commissioning client (Gemeente Oss) reads the finished report but does not operate the tool directly; their need for a credible, well-organized report shapes the export requirements below rather than a use case of their own.
+
+\subsection{Scenarios}
+
+\textbf{Scenario A --- Drafting the Euterpepark Wijkscan.} Sam finishes coding the resident survey responses into ``Gecategoriseerde data'' and uploads it alongside the three Expertwandeling spreadsheets and the QGIS map PNGs. Anouk opens the tool, picks the six-theme structure already used by the reference report, and asks it to draft the ``Sporten'' section. The tool pulls the relevant expert score-per-indicator rows, the matching remark cells, the resident Behoefte/Belemmering counts, and the Sport- en speelkaart map, and produces a paragraph in the same voice as the existing report --- each sentence marked with the specific rows, cells, or image it came from. Anouk reads it in five minutes instead of the day it used to take to reassemble the same picture by hand.
+
+\textbf{Scenario B --- Catching an unsupported claim.} Mika reviews the ``Uitstraling'' section before it goes to the gemeente. One sentence claims residents specifically want ``meer bankjes en horeca''; Mika clicks it and sees it's linked to only a single stakeholder's open-text remark, not a resident-survey count. She edits the sentence to reflect that it's one observation, not a majority view, and marks the claim as corrected. The system keeps her edit and the original AI draft in the audit trail. This is the exact failure mode the research is designed to catch --- an AI draft that reads as more consensus-backed than its source actually supports.
+
+\textbf{Scenario C --- Running it on the office laptop.} Alex sets the tool up on InnoBeweegLab's shared laptop: no GPU, 16GB RAM. Tagging and extraction of raw survey rows into themes runs locally overnight in batch, free of charge; only the already-tagged, anonymized text is sent to a hosted model for the higher-stakes step of writing full sentences, through a provider-agnostic layer Alex can repoint at a different API without changing the rest of the system. No resident-identifying text ever leaves the laptop.
+
+\begin{calloutbox}{amber}{How the scenarios compare with the build (30 Oct)}
+\begin{itemize}
+\item \textbf{Scenario A} is supported end to end with the template pipeline. The ``five minutes'' and the ``same voice'' are not measured yet, because no real model has run (US2, US10).
+\item \textbf{Scenario B} is covered by two automatic checks. A claim that names residents but cites only stakeholder answers is flagged \code{attribution\_mismatch}; majority wording on a single quote is flagged \code{overgeneralisation}. The edit keeps the original in the log (TC10).
+\item \textbf{Scenario C} describes a hybrid set-up. In the current default, drafting also runs locally; a hosted EU model is configured but switched off, and would need InnoBeweegLab's permission (experiment E6). The provider-agnostic layer exists (NFR8).
+\end{itemize}
+\end{calloutbox}

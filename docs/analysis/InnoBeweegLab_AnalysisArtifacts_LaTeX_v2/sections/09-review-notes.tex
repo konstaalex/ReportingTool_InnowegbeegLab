@@ -1,0 +1,37 @@
+\section{Review notes}\label{sec:review}
+
+\subsection{Consistency check of 9 October 2026 (unchanged)}
+
+A read-through of the personas, use cases, user stories, and NFRs above against the current main research question, the DOT sub-questions (Lab/SQ3, Lab/SQ4), and the Background Research Report's Section 3.8 stakeholder survey --- all finalized 7 October 2026, after this document's 29 September 2026 dateline. Nothing below is a correction: everything already written here still holds. These are optional strengthening opportunities, left for the author to decide on rather than applied here.
+
+\begin{enumerate}
+\item \textbf{Dateline gap, no contradiction found.} This document predates the Lab/SQ3--SQ4 sub-questions and the 7 October stakeholder survey; everything in it was checked against both and nothing here is factually inconsistent with either.
+\item \textbf{NFR1 (Traceability) and NFR2 (Human control) currently cite literature only.} Optional: add the survey's quantified backing alongside it --- traceability scored 4.8/5 and human review/approval scored a unanimous 5.0/5 on importance (Section 3.8) --- the same way the Background Research Report folds this survey into its own traceability discussion.
+\item \textbf{US2's acceptance criterion says ``within a stated time budget,''} which was a placeholder when written. The survey now gives an actual stakeholder-validated number: 3 of 5 respondents want a 25--50\% reduction in analysis/reporting time, 2 of 5 want 10--25\%, nobody asked for more than 50\%. Optional: replace the placeholder in US2 (and possibly NFR5) with that figure.
+\item \textbf{NFR8 and the Context \& scope section's SQ3/SQ4 references} were checked against the current Lab/SQ3, Lab/SQ4 wording in the research plan and literature review --- they already match; no change needed.
+\item No inconsistencies were found in the personas, scenarios, UC1--UC6, or the remaining NFRs.
+\end{enumerate}
+
+The stakeholder survey is Section 4.8 in version 12 of the Background Research Report.
+
+\subsection{Status review of 30 October 2026}
+
+\begin{enumerate}
+\item \textbf{UC2--UC6 are now built.} TC9--TC14 were written as acceptance tests for use cases still to be built; all six now have code, and five have an automated test (TC9 is checked by hand).
+\item \textbf{Built but not yet measured.} No real model has run yet, so NFR5 (a batch within a working session on 16~GB), US2 (time budget), US4 (under 2 seconds) and US10 (house voice) are open. NFR3 (usability of verification) and NFR10 (use by lab staff) need the review-screen workshop and the December evaluation.
+\item \textbf{FR13 and US8 ask for a per-step choice of model.} The code chooses the model per run and per image reading. Either the requirement is narrowed to per-run, or per-stage routing is built. \textit{Decision needed.}
+\item \textbf{Scenario C describes a hybrid set-up} with a hosted model for drafting. The current default drafts locally; a hosted EU model is configured but off and needs InnoBeweegLab's permission (experiment E6).
+\item \textbf{The added items need confirmation.} UC7--UC9, US11--US14, FR17--FR21 and TC15--TC22 describe what the code does now. Their MoSCoW priority is still to be set.
+\item \textbf{The suggestions of 9 October are still open} (points 2 and 3 above).
+\end{enumerate}
+
+\section*{Sources}
+\addcontentsline{toc}{section}{Sources}
+
+\begin{itemize}
+\item \textit{Innoweegbeg AI Reporting Tool --- Requirements Engineering}, 29 September 2026, with review notes of 9 October 2026 (Word). All unmarked content of this document.
+\item Design decisions D1--D26: \code{docs/design/reporting-tool-design.md} in the repository. Basis of the items marked \added.
+\item Repository code and tests on 30 October 2026: \code{src/} and \code{tests/}. Basis of every status.
+\item Implementation brief, Sections 12 and 15--17.
+\item Background Research Report, version 12 (October 2026), Sections 2.5, 4.8, 4.9 and 5.5.
+\end{itemize}

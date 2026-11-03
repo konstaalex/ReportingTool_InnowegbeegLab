@@ -1,0 +1,151 @@
+% =============================================================================
+% InnoBeweegLab — Analysis Artifacts (personas, scenarios, use cases, user stories, requirements, tests, domain model)
+% Main file: assembles the title page, front matter, and each chapter file
+% from sections/*.tex. Compile with: latexmk -pdf main.tex
+% =============================================================================
+\documentclass[11pt,a4paper]{article}
+
+% ---------- encoding / fonts ----------
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\sloppy
+\tolerance=2000
+\emergencystretch=2em
+
+% ---------- page geometry ----------
+\usepackage[margin=2.5cm]{geometry}
+\usepackage[hyphens]{url}
+
+% ---------- color palette (matches the project's Word house style) ----------
+\usepackage{xcolor}
+\definecolor{navy}{HTML}{1F3B57}
+\definecolor{headblue}{HTML}{2E74B5}
+\definecolor{dknavy}{HTML}{1F4D78}
+\definecolor{teal}{HTML}{2C7A7B}
+\definecolor{amber}{HTML}{A9750E}
+\definecolor{light}{HTML}{EEF3F5}
+\definecolor{inkgray}{HTML}{222222}
+
+% ---------- headings ----------
+\usepackage{titlesec}
+\titleformat{\section}{\color{headblue}\Large\bfseries}{\thesection}{0.6em}{}
+\titleformat{\subsection}{\color{dknavy}\large\bfseries}{\thesubsection}{0.6em}{}
+\titleformat{\subsubsection}{\color{teal}\normalsize\bfseries}{\thesubsubsection}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.4em}{0.8em}
+\titlespacing*{\subsection}{0pt}{1.1em}{0.6em}
+\titlespacing*{\subsubsection}{0pt}{0.9em}{0.5em}
+
+% ---------- tables, lists, misc ----------
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{colortbl}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\setlist{itemsep=0.25em, topsep=0.4em}
+\usepackage{parskip}
+\usepackage{tcolorbox}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,calc,shapes.geometric,shapes.multipart,fit}
+\tcbuselibrary{skins,breakable}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=headblue,
+  citecolor=teal,
+  urlcolor=teal,
+  pdftitle={InnoBeweegLab -- Analysis Artifacts},
+  pdfauthor={Alex Constantinescu}
+}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textcolor{gray}{InnoBeweegLab --- AI-Supported Reporting System}}
+\fancyhead[R]{\small\textcolor{gray}{Analysis Artifacts}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ---------- callout box environment (teal / amber), matching house style ----------
+\newtcolorbox{calloutbox}[2]{
+  enhanced,
+  breakable,
+  colback=light,
+  colframe=#1,
+  boxrule=0.8pt,
+  left=8pt, right=8pt, top=6pt, bottom=6pt,
+  title={\textcolor{#1}{\textbf{\MakeUppercase{#2}}}},
+  fonttitle=\small,
+  coltitle=#1,
+  attach title to upper,
+  before upper={\par\vspace{2pt}},
+  after title={\par\vspace{2pt}}
+}
+
+\setcounter{secnumdepth}{3}
+\setcounter{tocdepth}{3}
+
+% thebibliography auto-prints its own "References" heading; we supply our
+% own \section*{References} instead, so suppress the built-in one. (babel
+% resets \refname at \begin{document}, so the override must run after that.)
+\AtBeginDocument{\renewcommand{\refname}{}}
+
+
+% ---------- status and "added" markers used in every table ----------
+\definecolor{notyet}{HTML}{9B2C2C}
+\newcommand{\stBT}{\textcolor{teal}{\textbf{Built, tested}}}
+\newcommand{\stB}{\textcolor{teal}{\textbf{Built}}}
+\newcommand{\stBM}{\textcolor{teal}{\textbf{Built, no model run yet}}}
+\newcommand{\stP}{\textcolor{amber}{\textbf{Partly}}}
+\newcommand{\stN}{\textcolor{notyet}{\textbf{Not yet}}}
+\newcommand{\added}{\ {\setlength{\fboxsep}{1.5pt}\colorbox{amber!15}{\scriptsize\textcolor{amber}{\textbf{ADDED 30 OCT}}}}}
+\newcommand{\codeus}{\textunderscore\allowbreak}
+\newcommand{\code}[1]{{\small\ttfamily\let\_\codeus #1}}
+\newcommand{\addid}[1]{\textcolor{amber}{\textbf{#1}}\newline{\scriptsize\textcolor{amber}{\textbf{new}}}}
+\newcommand{\hdr}[1]{\cellcolor{navy}\textcolor{white}{\textbf{#1}}}
+
+\begin{document}
+
+% =============================================================================
+% TITLE PAGE
+% =============================================================================
+\begin{titlepage}
+\centering
+\vspace*{1.5cm}
+{\small InnoBeweegLab --- AI-Supported Reporting System}\\[1.2cm]
+{\color{navy}\Huge\bfseries Analysis Artifacts}\\[0.7cm]
+{\color{teal}\Large\bfseries Personas, Scenarios, Use Cases, User Stories, Requirements, Test Cases and Domain Model --- with the Implementation Status of 30 October 2026}\\[1.8cm]
+{\large Prepared by: Alex Constantinescu}\\[0.3cm]
+{\large Master of Applied IT (Fontys ICT) --- InnoBeweegLab capstone project}\\[0.3cm]
+{\large Version 2 --- 30 October 2026}
+\vfill
+\end{titlepage}
+
+\pagenumbering{roman}
+\section*{Version history}
+\addcontentsline{toc}{section}{Version history}
+\input{version-history.tex}
+
+\clearpage
+\tableofcontents
+
+\clearpage
+\pagenumbering{arabic}
+
+\input{sections/01-introduction.tex}
+\clearpage
+\input{sections/02-personas-scenarios.tex}
+\clearpage
+\input{sections/03-use-cases.tex}
+\clearpage
+\input{sections/04-user-stories.tex}
+\clearpage
+\input{sections/05-requirements.tex}
+\clearpage
+\input{sections/06-traceability-workflow.tex}
+\clearpage
+\input{sections/07-test-cases.tex}
+\clearpage
+\input{sections/08-domain-model.tex}
+\clearpage
+\input{sections/09-review-notes.tex}
+
+\end{document}

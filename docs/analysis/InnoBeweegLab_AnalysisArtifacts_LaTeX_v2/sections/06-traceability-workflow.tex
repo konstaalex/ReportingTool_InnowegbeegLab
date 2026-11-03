@@ -1,0 +1,80 @@
+\section{Traceability and workflow}\label{sec:trace}
+
+\subsection{Requirements traceability matrix}
+
+Each use case traced to its personas, requirements, user stories and test cases. The persona, FR and NFR columns for UC1--UC6 are as on 29 September; the user-story and test-case columns follow from the ``traces to'' fields in Sections~\ref{sec:stories} and~\ref{sec:tests}.
+
+This table is itself a first exercise in the pattern the tool needs to support: every requirement here can be walked back to a specific line in the research plan, the dataset inventory, or the cited literature --- the same claim-to-source discipline the system is meant to enforce.
+
+\begingroup\renewcommand{\arraystretch}{1.3}\small
+\begin{longtable}{|>{\raggedright\arraybackslash\hspace{0pt}}p{3.0cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{2.2cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{2.0cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{2.6cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{1.6cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{1.8cm}|}
+\hline
+\hdr{Use case} & \hdr{Personas} & \hdr{FR} & \hdr{NFR} & \hdr{US} & \hdr{TC} \\ \hline
+\endfirsthead
+\hline
+\hdr{Use case} & \hdr{Personas} & \hdr{FR} & \hdr{NFR} & \hdr{US} & \hdr{TC} \\ \hline
+\endhead
+UC1 Ingest source data & Sam, Anouk & FR1, FR2, FR3, FR16 & NFR7, NFR9, NFR10 & US1 & TC1--TC4 \\ \hline
+\rowcolor{light}
+UC2 Generate a draft themed section & Anouk & FR4, FR5, FR6 & NFR1, NFR5, NFR6 & US2, US3, US10 & TC5, TC6, TC22 \\ \hline
+UC3 Verify a claim against its source & Anouk, Mika & FR5, FR7 & NFR1, NFR3 & US3, US4 & TC5, TC7--TC9 \\ \hline
+\rowcolor{light}
+UC4 Correct or approve a claim & Mika & FR8, FR9, FR10 & NFR2, NFR4, NFR11 & US5, US6 & TC8, TC10, TC11 \\ \hline
+UC5 Configure model/provider & Alex & FR13, FR14, FR15, FR16 & NFR6, NFR7, NFR8, NFR10, NFR12 & US8, US9 & TC12, TC13 \\ \hline
+\rowcolor{light}
+UC6 Export the approved report & Anouk & FR11, FR12 & NFR2, NFR11 & US7 & TC14 \\ \hline
+UC7 Analyse the images\added & Anouk, Sam & FR17, FR18 & NFR1, NFR9, NFR11 & US11, US12 & TC15--TC17, TC22 \\ \hline
+\rowcolor{light}
+UC8 Record researcher notes\added & Sam, Anouk & FR19 & NFR1, NFR7 & US13 & TC18 \\ \hline
+UC9 Compare models against the original\added & Alex & FR20, FR21 & NFR5, NFR7, NFR8 & US14 & TC19--TC21 \\ \hline
+\end{longtable}
+\endgroup
+
+\subsection{Workflow as built}
+
+Figure~\ref{fig:workflow} redraws the claim verification loop of 29 September (upload $\rightarrow$ tag $\rightarrow$ draft $\rightarrow$ verify $\rightarrow$ approve/edit $\rightarrow$ export) as it is now implemented. Two inputs were added before drafting: the image analysis (UC7) and the researcher notes (UC8). Between them and the draft sits the evidence layer, where every number is computed in code.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  node distance=0.55cm and 0.6cm,
+  wstep/.style={rectangle, rounded corners=3pt, draw=navy, line width=0.7pt, fill=white, text width=4.6cm, align=center, font=\small, inner sep=5pt, minimum height=1.0cm},
+  stepadd/.style={wstep, draw=amber, dashed, fill=amber!6},
+  key/.style={wstep, fill=light, draw=teal, line width=0.9pt},
+  dec/.style={diamond, aspect=2.2, draw=navy, line width=0.7pt, fill=white, font=\small, align=center, inner sep=1pt},
+  arr/.style={-{Stealth[length=2.2mm]}, draw=inkgray!80, line width=0.6pt},
+  lab/.style={font=\footnotesize, text=inkgray}
+]
+\node[wstep]    (ing)  {UC1 Ingest files: a stable id and checksum per cell and image};
+\node[stepadd, left=of ing]  (img)  {UC7 Measure the maps; read and confirm the infographics};
+\node[stepadd, right=of ing] (notes){UC8 Record researcher notes, each with a source};
+\node[key, below=of ing] (ev)   {Evidence layer: every number computed in code, a readable id per item};
+\node[wstep, below=of ev] (dr)   {UC2 Draft a section: claims cite evidence ids only};
+\node[wstep, below=of dr] (chk)  {Automatic checks per claim: citation, number, group, wording, style};
+\node[wstep, below=of chk] (open) {UC3 Reviewer opens a claim and sees its sources};
+\node[dec, below=of open] (sup)  {Supported?};
+\node[wstep, below left=0.5cm and -0.6cm of sup] (ok) {UC4 Approve (a flagged claim needs an explicit override)};
+\node[wstep, below right=0.5cm and -0.6cm of sup] (ed) {UC4 Edit or reject; an edit is checked again};
+\node[dec, below=2.6cm of sup] (all)  {Every claim\\resolved?};
+\node[key, below=of all] (exp)  {UC6 Export the Word report and the evidence map};
+
+\draw[arr] (ing.west) -- (img.east);
+\draw[arr] (img.south) |- (ev.west);
+\draw[arr] (notes.south) |- (ev.east);
+\draw[arr] (ing) -- (ev);
+\draw[arr] (ev) -- (dr);
+\draw[arr] (dr) -- (chk);
+\draw[arr] (chk) -- (open);
+\draw[arr] (open) -- (sup);
+\draw[arr] (sup.west) -| node[lab, pos=0.25, above] {yes} (ok.north);
+\draw[arr] (sup.east) -| node[lab, pos=0.25, above] {no} (ed.north);
+\draw[arr] (ok.south) |- ($(all.north)+(0,0.4)$) -- (all.north);
+\draw[arr] (ed.south) |- ($(all.north)+(0,0.4)$) -- (all.north);
+\draw[arr] (all) -- node[lab, right] {yes} (exp);
+\draw[arr, rounded corners=3pt] (all.west) -- ++(-4.4,0) |- node[lab, pos=0.25, left, align=right] {no:\\next\\claim} (open.west);
+\end{tikzpicture}
+\caption{The claim verification loop as built on 30 October. Dashed amber steps were added after 29 September; teal steps are the two ends of the traceability chain (evidence in, report out).}
+\label{fig:workflow}
+\end{figure}
+
+The loop between ``Supported?'' and ``Edit or reject'' stays open per claim until a human resolves it; a section only clears for export once every claim in it has been approved or corrected --- this is the human-in-the-loop step the research design requires, drawn as the actual decision point rather than described in prose.

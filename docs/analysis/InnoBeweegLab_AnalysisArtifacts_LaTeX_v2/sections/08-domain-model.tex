@@ -1,0 +1,87 @@
+\section{Domain model}\label{sec:domain}
+
+On 29 September the domain model covered the ingestion code (\code{SourceRecord}, \code{SourceStore}) and the evaluation harness (\code{Claim}, \code{GoldClaim}, \code{Draft}, \code{RunResult}); the drafting side was specified but not built. Figure~\ref{fig:domain} shows the classes as implemented on 30 October. The chain that makes a claim traceable runs down the middle column: a claim holds only evidence ids, each evidence item holds the ids of its source records, and each source record holds file, sheet and locator.
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  cls/.style={rectangle split, rectangle split parts=2, draw=navy, line width=0.7pt, text width=4.5cm, font=\scriptsize, align=left, inner sep=3pt, rectangle split part fill={navy!12,white}},
+  clsadd/.style={cls, draw=amber, rectangle split part fill={amber!15,white}},
+  rel/.style={draw=inkgray!80, line width=0.55pt},
+  m/.style={font=\scriptsize, text=inkgray, fill=white, inner sep=1pt}
+]
+\node[cls] (doc) at (0,0) {\textbf{\small SourceDocument}\nodepart{second}source\_id, filename\\checksum (SHA-256), perspective\\case\_id\\status: parsed / duplicate /\\\quad excluded\_reference\_\\\quad report};
+\node[cls] (rec) at (5.5,0) {\textbf{\small SourceRecord}\nodepart{second}id = hash(perspective, file,\\\quad sheet, locator)\\source\_file, sheet, \textbf{locator}\\theme, neighbourhood\\text or value\\needs\_manual\_mapping};
+\node[clsadd] (conf) at (11,0) {\textbf{\small ConfirmationEvent}\nodepart{second}seq, ts, actor\\action: confirm / correct /\\\quad reject\\record\_id, value\\prev\_hash, hash};
+\node[cls] (pack) at (0,-3.7) {\textbf{\small EvidencePack}\nodepart{second}case\_id, section\\items, unavailable inputs\\select(), top\_k()};
+\node[cls] (ev) at (5.5,-3.7) {\textbf{\small Evidence}\nodepart{second}evidence\_id (e.g.\ B-SP-03)\\perspective, kind, statement\\data (every number)\\\textbf{source\_record\_ids}\\salience, method\\contains\_free\_text};
+\node[cls] (sd) at (0,-7.4) {\textbf{\small SectionDraft}\nodepart{second}draft\_id, case\_id, section\\pipeline\_id, model\\claims, stages\\section\_checks (metrics)};
+\node[cls] (claim) at (5.5,-7.4) {\textbf{\small DraftClaim}\nodepart{second}claim\_id, text, claim\_type\\\textbf{evidence\_ids}\\verification: grounded / weak /\\\quad unsupported, flags};
+\node[cls] (state) at (11,-7.4) {\textbf{\small ClaimState}\nodepart{second}claim\_id, original\_text, text\\status: draft / approved /\\\quad edited / rejected\\override, last\_actor, last\_ts};
+\node[cls] (stage) at (0,-11.1) {\textbf{\small StageLog}\nodepart{second}stage, provider, model\\prompt\_sha, latency\_s\\input and output tokens\\evidence\_sent, privacy note};
+\node[cls] (sess) at (5.5,-11.1) {\textbf{\small ReviewSession}\nodepart{second}draft, reviewer, events\\approve(), edit(), reject()\\states(), verify\_chain()};
+\node[cls] (evt) at (11,-11.1) {\textbf{\small ReviewEvent}\nodepart{second}seq, ts, actor, action\\claim\_id, before, after\\prev\_hash, hash};
+
+\draw[rel] (doc) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {*} (rec);
+\draw[rel] (conf) -- node[m, pos=0.2, above] {*} node[m, pos=0.8, above] {1} (rec);
+\draw[rel] (rec) -- node[m, pos=0.2, right] {1..*} node[m, pos=0.8, right] {*} node[m, midway, left] {cites} (ev);
+\draw[rel] (pack) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {*} (ev);
+\draw[rel] (ev) -- node[m, pos=0.2, right] {1..*} node[m, pos=0.8, right] {*} node[m, midway, left] {cites} (claim);
+\draw[rel] (sd) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {*} (claim);
+\draw[rel] (claim) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {1} (state);
+\draw[rel] (sd) -- node[m, pos=0.2, right] {1} node[m, pos=0.8, right] {*} node[m, midway, left] {stages} (stage);
+\draw[rel] (sess) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {*} (evt);
+\draw[rel] (sess.north west) -- node[m, midway, above, sloped] {wraps 1:1} (sd.south east);
+\end{tikzpicture}
+\caption{Domain model as implemented on 30 October 2026. Names and fields are read from the code (\code{ingestion/}, \code{evidence/}, \code{drafting/models.py}, \code{review/session.py}, \code{imaging/confirm.py}). Amber: added since 29 September for image readings. Only the main fields are shown.}
+\label{fig:domain}
+\end{figure}
+
+\subsection{Entities}
+
+\begingroup\renewcommand{\arraystretch}{1.3}\small
+\begin{longtable}{|>{\raggedright\arraybackslash\hspace{0pt}}p{2.6cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{4.0cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{7.2cm}|}
+\hline
+\hdr{Entity} & \hdr{Code} & \hdr{Purpose / notes} \\ \hline
+\endfirsthead
+\hline
+\hdr{Entity} & \hdr{Code} & \hdr{Purpose / notes} \\ \hline
+\endhead
+SourceDocument & \code{ingestion/sources.py} & One per input file, with a SHA-256 checksum. Byte-identical copies are skipped and reported; an experiment run records exactly which file versions it used. The original report is kept as \code{excluded\_reference\_report}, for evaluation only. \\ \hline
+\rowcolor{light}
+SourceRecord & \code{ingestion/models.py} & The one addressable unit everything downstream cites (UC1). The locator (e.g.\ ``row 6'', ``B6:C6'', ``image'') makes a citation resolvable without re-parsing the source file; the id is derived deterministically, so re-ingesting the same cell yields the same id. Image measurements and readings are records too. \\ \hline
+SourceStore & \code{ingestion/store.py} & The repository of records: \code{by\_theme()}, \code{by\_perspective()}, \code{flagged()} (the manual-mapping queue of FR3), JSON save and load. \\ \hline
+\rowcolor{light}
+Evidence, EvidencePack & \code{evidence/models.py}, \code{evidence/builder.py} & A pre-computed fact with a readable id, a Dutch statement, every number in machine form and the ids of its source records. A pack holds all evidence for one case and section. This is the only thing a drafting model sees. \\ \hline
+DraftClaim, SectionDraft, StageLog & \code{drafting/models.py} & The output contract every pipeline must produce: claims that hold evidence ids only, never facts of their own; one stage log per model call with prompt fingerprint, latency, tokens and privacy note. \\ \hline
+\rowcolor{light}
+ReviewSession, ReviewEvent, ClaimState & \code{review/session.py} & An append-only, hash-chained log per section. The draft is never changed; the current state of each claim is derived from the draft and the events. \code{verify\_chain()} detects edits to the log (NFR11). \\ \hline
+ConfirmationEvent\newline\added & \code{imaging/confirm.py} & A researcher's confirm, correct or reject decision on an image reading, hash-chained like the review log. \\ \hline
+\rowcolor{light}
+Run records\newline\added & \code{experiments/runner.py}, \code{reports/runs.py} & JSON per run: configuration, code version, data checksums, prompt fingerprints, drafts, check metrics, time and tokens. A full-report run also keeps its Word report and its evaluation against the original. \\ \hline
+Claim, GoldClaim, Draft, RunResult & \code{evaluation/} & The first evaluation harness of 29 September, still used for TC5--TC8. It scores citation sets against a synthetic gold set and is not yet connected to real drafts. \\ \hline
+\end{longtable}
+\endgroup
+
+\subsection{Relationships}
+
+\begingroup\renewcommand{\arraystretch}{1.3}\small
+\begin{longtable}{|>{\raggedright\arraybackslash\hspace{0pt}}p{3.0cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{5.6cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{5.2cm}|}
+\hline
+\hdr{From} & \hdr{Relationship} & \hdr{To} \\ \hline
+\endfirsthead
+\hline
+\hdr{From} & \hdr{Relationship} & \hdr{To} \\ \hline
+\endhead
+SourceRecord & belongs to exactly one & perspective (data / expert / bewoners / reference) \\ \hline
+\rowcolor{light}
+SourceRecord & tagged with zero or one & theme (from THEMES), optionally a subtheme \\ \hline
+SourceRecord & flagged via needs\_manual\_mapping when & no known template shape matches (FR3) \\ \hline
+\rowcolor{light}
+Evidence & cites one or more, by id (source\_record\_ids) & SourceRecord \\ \hline
+DraftClaim & cites zero or more, by id (evidence\_ids) & Evidence --- zero, or an unknown id, makes the claim unsupported \\ \hline
+\rowcolor{light}
+ReviewSession & wraps exactly one & SectionDraft, and logs ReviewEvents in a hash chain \\ \hline
+ConfirmationEvent & confirms, corrects or rejects & one image-reading SourceRecord \\ \hline
+\end{longtable}
+\endgroup

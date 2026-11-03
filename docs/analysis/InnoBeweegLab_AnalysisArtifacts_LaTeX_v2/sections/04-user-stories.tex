@@ -1,0 +1,37 @@
+\section{User stories}\label{sec:stories}
+
+Fourteen user stories: US1--US10 from 29 September, word for word, and US11--US14 for what was built since. The status column says how far each acceptance criterion is met today.
+
+\newcommand{\us}[4]{As a \textbf{#1}, I want to #2, so that #3.}
+
+\begingroup\renewcommand{\arraystretch}{1.3}\small
+\begin{longtable}{|>{\raggedright\arraybackslash\hspace{0pt}}p{1.0cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{4.9cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{4.4cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{3.5cm}|}
+\hline
+\hdr{ID} & \hdr{Story} & \hdr{Acceptance criteria} & \hdr{Status (30 Oct)} \\ \hline
+\endfirsthead
+\hline
+\hdr{ID} & \hdr{Story} & \hdr{Acceptance criteria} & \hdr{Status (30 Oct)} \\ \hline
+\endhead
+US1 & \us{Field Researcher}{upload the resident survey and expert walkthrough spreadsheets in the format I already produce them in}{I don't have to re-enter or reformat data I've already collected}{} & System accepts the actual Wijkscan Euterpepark file shapes (Gecategoriseerde/Samengevoegde data, Score per indicator, Score/Opmerkingen) without manual reshaping; rejects only genuinely unrecognized formats, with a clear reason & \stBT. Oss and Buurtscan shapes; unknown files flagged, not guessed (\code{test\_unknown\_file\_is\_not\_guessed}). \\ \hline
+\rowcolor{light}
+US2 & \us{Lead Researcher}{generate a first draft of a theme's Resultaten section from the ingested data}{I don't have to manually reassemble the picture across three spreadsheets and a map every time}{} & A drafted section exists within a stated time budget on the standard laptop; every sentence has zero or more explicit source links & \stBM. Drafts with source links exist (template); the time on a 16~GB laptop is not measured yet. \\ \hline
+US3 & \us{Lead Researcher}{see, at a glance, which sentences in the draft have no supporting source}{I know exactly where to focus my review, not re-check everything blindly}{} & Unsupported/\allowbreak weakly-grounded claims are visually distinguishable from grounded ones before I read a single word of the draft & \stBT. Status per claim (\code{verification/}\allowbreak\code{checks.py}), counts and coloured badges in tab~3, coloured evidence ids in Word. \\ \hline
+\rowcolor{light}
+US4 & \us{Lead Researcher or Reviewer}{click any sentence and see the exact source row, cell, or map region it came from}{I can judge in seconds whether it's actually supported, the way MAXQDA's reference markers let a researcher jump to source text}{} & Clicking a claim opens the specific source excerpt (not just ``the spreadsheet'' or ``the map'') in under 2 seconds & \stB. Source rows per evidence item in tab~3; the 2-second target is not measured. \\ \hline
+US5 & \us{Reviewer}{edit or remove a claim I don't agree with, and have my change kept as the record}{my professional judgment stays the final word, and I'm not just rubber-stamping the AI's output}{} & Edited/removed claims are saved with the reviewer's identity and timestamp; the original AI-drafted version remains visible in the history, not silently overwritten & \stBT{} (\code{test\_edit\_keeps\_original\_and\_rechecks}). \\ \hline
+\rowcolor{light}
+US6 & \us{Reviewer}{be shown when I'm approving a claim the system itself had flagged as weak}{I don't accidentally wave through something the tool already warned about}{} & An override of a flagged claim requires an explicit confirmation step, recorded separately from an ordinary approval & \stBT{} (\code{test\_flagged\_claim\_needs\_override}). \\ \hline
+US7 & \us{Lead Researcher}{export the report only once every section is reviewed}{nothing unreviewed reaches the gemeente under InnoBeweegLab's name}{} & Export is blocked, with a named reason, until every section's claims are approved or edited, not left pending & \stBT{} (\code{test\_export\_blocked\_until\_reviewed}). \\ \hline
+\rowcolor{light}
+US8 & \us{Lab Tech Lead}{choose which pipeline steps run on the local model versus a hosted API}{I keep the system within a zero-budget, 16GB-RAM constraint without sacrificing report quality on the steps that matter most}{} & Configuration exposes a per-step choice (local/hosted) without requiring a code change; an invalid combination (e.g.\ a RAM-infeasible local model) is rejected before use, not after a failed run & \stP. Local or hosted per model, without a code change; RAM check before the run (\code{test\_model\_ram\_validation}). Not per pipeline step. \\ \hline
+US9 & \us{Lab Tech Lead}{be sure resident-identifying data never reaches a hosted API unless I've explicitly allowed it}{InnoBeweegLab stays GDPR-compliant with resident health/mobility data by default}{} & Default configuration routes any text still containing personal identifiers through the local model only; sending raw personal data to a hosted API requires an explicit, separately-logged override & \stBT{} (\code{test\_privacy\_blocks\_hosted\_resident\_text}, \code{test\_privacy\_override\_is\_logged}). \\ \hline
+\rowcolor{light}
+US10 & \us{Lead Researcher}{see a draft section written in a voice and structure consistent with InnoBeweegLab's existing reports}{the output is usable with light editing, not a rewrite}{} & A drafted theme section follows the same shape (finding $\rightarrow$ detail $\rightarrow$ cross-perspective synthesis) as the reference Euterpepark report for that theme & \stP. Prompt v2 follows the house order: data and maps, experts, residents, synthesis (D19). Not yet measured on model output. \\ \hline
+\addid{US11} & \us{Field Researcher}{have each map measured per neighbourhood, with an overlay image I can check}{the rule tests in the report rest on measured numbers, not on a model's reading of the picture}{} & Each map measurement is a citable record that states its method; an overlay shows what was counted; a zone map that does not fit the reference map is refused & \stBT{} (\code{test\_regions\_and\_shares}, \code{test\_wrong\_reference\_is\_refused\_not\_guessed}). \\ \hline
+\rowcolor{light}
+\addid{US12} & \us{Lead Researcher}{confirm, correct or reject every value a vision model read from an infographic}{an unconfirmed reading never passes as a fact}{} & Readings start as unconfirmed; a claim that cites one is flagged weak; rejected readings are dropped; every decision is logged & \stBT{} with a stand-in model (\code{test\_unconfirmed\_image\_reading\_is\_weak}, \code{test\_status\_and\_chain}); no vision model run yet. \\ \hline
+\addid{US13} & \us{Field or Lead Researcher}{record what the team knows but no file holds, with its source}{the tool can cite that knowledge instead of inventing it}{} & Five kinds of note in one Excel template; each note gets an id; notes from meetings are privacy-flagged and never presented as the residents' view & \stBT{} (\code{test\_note\_evidence\_perspectives\_and\_sections}, \code{test\_meeting\_note\_is\_not\_the\_residents\_view}). \\ \hline
+\rowcolor{light}
+\addid{US14} & \us{Lab Tech Lead}{generate a full report per model and compare each with the original human report}{the choice of model and approach rests on measurements}{} & Same evidence, prompts and pipeline per run; a missing model stops the run before it starts; one comparison table with coverage, ceiling, numbers and figures; agreement with human labels as Cohen's $\kappa$ & \stP{} (\code{test\_reports.py}). Approaches A and B work; D and averaging over repeats are not built. \\ \hline
+\end{longtable}
+\endgroup

@@ -1,0 +1,80 @@
+\section{Requirements}\label{sec:requirements}
+
+\subsection{Functional requirements}
+
+FR1--FR16 are word for word from 29 September. FR17--FR21 describe what was built since; their priority is still to be set.
+
+\begingroup\renewcommand{\arraystretch}{1.3}\small
+\begin{longtable}{|>{\raggedright\arraybackslash\hspace{0pt}}p{0.9cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{5.3cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{1.4cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{1.3cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{4.9cm}|}
+\hline
+\hdr{ID} & \hdr{Requirement} & \hdr{Priority} & \hdr{Traces to} & \hdr{Status (30 Oct) and evidence} \\ \hline
+\endfirsthead
+\hline
+\hdr{ID} & \hdr{Requirement} & \hdr{Priority} & \hdr{Traces to} & \hdr{Status (30 Oct) and evidence} \\ \hline
+\endhead
+FR1 & Accept, as source input, coded/raw qualitative survey spreadsheets, quantitative survey-tally spreadsheets, expert scoring-and-remarks spreadsheets, GIS-exported map images, and reference-report PDFs. & Must & UC1 & \stBT. Reference PDF registered, excluded from drafting, used for evaluation. \\ \hline
+\rowcolor{light}
+FR2 & Detect which of the three perspectives (data/expert/bewoners) an ingested file belongs to, and confirm the detected mapping to the actor rather than applying it silently. & Must & UC1 & \stBT. Detected per file and printed (\code{test\_classify\_known\_kinds}). \\ \hline
+FR3 & Flag any ingested sheet whose structure does not match a known template for manual mapping, rather than guessing at its meaning. & Must & UC1 & \stBT{} (\code{test\_unknown\_file\_is\_not\_guessed}, \code{test\_unmapped\_question\_is\_flagged}). \\ \hline
+\rowcolor{light}
+FR4 & Generate draft narrative text per theme, drawing on all ingested perspectives that touch that theme. & Must & UC2 & \stBM{} (\code{test\_staged\_runs\_one\_call\_per\_perspective\_plus\_synthesis}). \\ \hline
+FR5 & Attach to every generated sentence that states a specific fact, count, or finding an explicit link to the source record(s) --- row, cell, or image region --- it was derived from. & Must & UC2, UC3 & \stBT. Claim $\rightarrow$ evidence id $\rightarrow$ source record (\code{test\_every\_evidence\_resolves\_to\_records}); appendix and \code{evidence\_map.csv}. \\ \hline
+\rowcolor{light}
+FR6 & Visibly distinguish sentences with no linked source, or a low-confidence link, from fully-grounded sentences, before the reviewer opens any of them. & Must & UC2, UC3 & \stBT. Grounded, weak or unsupported per claim (\code{test\_no\_citation}, \code{test\_unsupported\_number}). \\ \hline
+FR7 & Let a reviewer open any claim and view the specific source excerpt(s) behind it, not merely the name of the source file. & Must & UC3 & \stB. File, sheet, location and value per source record in tab~3. \\ \hline
+\rowcolor{light}
+FR8 & Let a reviewer edit, remove, or approve each claim individually. & Must & UC4 & \stBT{} (\code{review/session.py}). \\ \hline
+FR9 & Record, for every claim, its current status (AI-drafted / edited / removed / approved), the responsible person, and a timestamp, and retain the original AI-drafted version even after an edit. & Must & UC4 & \stBT{} (\code{test\_edit\_keeps\_original\_and\_rechecks}). \\ \hline
+\rowcolor{light}
+FR10 & Require an explicit, separately-recorded confirmation when a reviewer approves a claim the system had itself flagged as weakly grounded. & Should & UC4 & \stBT{} (\code{test\_flagged\_claim\_needs\_override}). \\ \hline
+FR11 & Block export of a report (or section) until every claim in it is approved or edited, and state which section is incomplete. & Must & UC6 & \stBT{} (\code{test\_export\_blocked\_until\_reviewed}). \\ \hline
+\rowcolor{light}
+FR12 & Export an approved report as a document following the same section structure as InnoBeweegLab's existing Wijkscan reports (Samenvatting, Methode, Resultaten per theme, Conclusies, Aanbevelingen, Bronnenlijst, Bijlagen). & Must & UC6 & \stBT. Word report in the house layout (\code{test\_template\_run\_renders\_word\_report}). \\ \hline
+FR13 & Let an operator configure, per pipeline step, whether a local model or a specified hosted API performs that step, without a code change. & Must & UC5 & \stP. Per run (drafting) and per image reading (vision) in \code{config/models.toml}; not per pipeline step. \\ \hline
+\rowcolor{light}
+FR14 & Validate a proposed model/provider configuration against the available hardware (e.g.\ RAM) before it is applied. & Should & UC5 & \stBT{} (\code{test\_model\_ram\_validation}). \\ \hline
+FR15 & By default, route any text still containing personal identifiers through the local model only, and require an explicit, separately-logged override before sending such text to a hosted API. & Must & UC5 & \stBT{} (\code{test\_privacy\_blocks\_hosted\_resident\_text}, \code{test\_privacy\_override\_is\_logged}). \\ \hline
+\rowcolor{light}
+FR16 & Provide a mechanism to pseudonymize resident-identifying text before it is eligible to leave the local device. & Must & UC1, UC5 & \stBT. Rule-based pseudonymiser, deliberately simple (\code{test\_pseudonymise}). \\ \hline
+\addid{FR17} & Measure map images in code per neighbourhood (legend classes, distance-zone coverage, marker counts) and store each measurement as a citable record with an overlay image for checking. & To set & UC7 & \stBT{} (\code{test\_regions\_and\_shares}, \code{test\_homes\_inside\_the\_zone\_per\_neighbourhood}). \\ \hline
+\rowcolor{light}
+\addid{FR18} & Read printed values from infographics with a local vision model only as unconfirmed evidence until a researcher confirms, corrects or rejects them, and log each decision tamper-evidently. & To set & UC7 & \stBT{} with a stand-in model (\code{test\_unconfirmed\_image\_reading\_is\_weak}, \code{test\_status\_and\_chain}). \\ \hline
+\addid{FR19} & Accept researcher notes as a source type, each with its kind, theme and source, and flag notes from meetings for privacy. & To set & UC8 & \stBT{} (\code{test\_note\_evidence\_perspectives\_and\_sections}). \\ \hline
+\rowcolor{light}
+\addid{FR20} & Generate a full report per selected model under identical evidence, prompts and pipeline, kept apart from the review sessions, and stop before the run when a model cannot be reached. & To set & UC9 & \stBT{} (\code{test\_model\_run\_is\_kept\_apart\_from\_review}, \code{test\_unreachable\_local\_model\_fails\_before\_the\_run}); no real model run yet. \\ \hline
+\addid{FR21} & Compare a generated report with the original human report on structure, coverage, ceiling, numbers and figures, without the original's text reaching a prompt, and report agreement with human labels. & To set & UC9 & \stBT{} (\code{test\_alignment\_ceiling\_numbers\_additions}, \code{test\_calibrate}, \code{test\_hosted\_judge\_refused}). \\ \hline
+\end{longtable}
+\endgroup
+
+\subsection{Non-functional requirements}
+
+NFR1--NFR12 are word for word from 29 September; only the status column is new.
+
+\begingroup\renewcommand{\arraystretch}{1.3}\small
+\begin{longtable}{|>{\raggedright\arraybackslash\hspace{0pt}}p{0.9cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{2.2cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{4.0cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{3.4cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{3.3cm}|}
+\hline
+\hdr{ID} & \hdr{Category} & \hdr{Requirement} & \hdr{Rationale / source} & \hdr{Status (30 Oct)} \\ \hline
+\endfirsthead
+\hline
+\hdr{ID} & \hdr{Category} & \hdr{Requirement} & \hdr{Rationale / source} & \hdr{Status (30 Oct)} \\ \hline
+\endhead
+NFR1 & Traceability & Every factual claim in a generated draft must resolve to a specific, independently checkable source record --- not merely ``grounded in general'' --- regardless of which underlying architecture (single-pass or multi-agent) produces it. & Literature review: the deciding factor across successful traceable-generation systems is an explicit verification/grounding step, not agent count & \stBT. Claims carry only evidence ids; every pipeline uses the same checks. \\ \hline
+\rowcolor{light}
+NFR2 & Human control & The system shall never publish or finalize a report without an explicit human approval action on every included claim. & Core research-plan requirement: keep the researcher in control of interpretation and recommendations & \stBT. Export gate; previews marked CONCEPT. \\ \hline
+NFR3 & Usability of verifi\-cation & The review interface's actual effect on reviewers catching unsupported claims must be usability-tested, not assumed from the presence of source links alone. & HCI literature: four independent studies (2018--2026) found visible provenance/trust cues change reliance without reliably changing verification accuracy --- the ``accountability paradox'' & \stN. Planned: review-screen workshop and the stakeholder evaluation of 7--18 December. \\ \hline
+\rowcolor{light}
+NFR4 & Ownership & The review workflow should preserve the reviewer's sense of authorship and control over the final wording, not just offer accept/reject on AI text. & CANote finding: AI-drafted-then-reviewed content improved quality but reduced reviewers' reported ownership & \stP. Reviewers can rewrite any claim and add their own; not yet evaluated with users. \\ \hline
+NFR5 & Performance / hardware & Local pipeline steps (ingestion, tagging, extraction) must complete a typical batch (one wijkscan's worth of data) within a practical working session on a standard office laptop: 16GB RAM, CPU-only, no dedicated GPU. & Research plan hardware constraint (SQ4); realistic ceiling is a 7--9B model at Q4--Q6 quantization, $\sim$10--20 tok/s & \stN{} measured. Models fit the 60\% memory check on paper; the 16~GB test is planned. \\ \hline
+\rowcolor{light}
+NFR6 & Cost & Total recurring operating cost shall stay within InnoBeweegLab's zero/near-zero project budget: a lean hosted-API integration path, if used, should stay in the EUR 5--50/month range, with free tiers acceptable during prototyping. & GenAI provider cost comparison business case & \stB. Local models at no cost; the hosted provider is off by default and its prices are still to be filled in. \\ \hline
+NFR7 & Data privacy / GDPR & Personal and special-category data (resident health/mobility information) must never leave the local device to a hosted API that lacks EU residency or a data-processing agreement, unless explicitly and separately authorized. & Cost-comparison doc's GDPR section; resident data likely includes special-category health/mobility information & \stBT. Privacy guard; a hosted provider without declared data residency is refused. \\ \hline
+\rowcolor{light}
+NFR8 & Provider/\allowbreak architecture agnosticism & The system shall isolate model/provider choice behind an abstraction layer so the underlying architecture (single-pass vs.\ multi-agent) and model provider can be swapped and empirically compared without rebuilding the rest of the system. & Research plan SQ3/SQ4 require empirical comparison, not a fixed premise; also the Software-L4 ``design a framework'' competency target & \stBT. One provider interface (\code{llm/base.py}); all pipelines share one input and output contract. \\ \hline
+NFR9 & Interoperability & The system must ingest the real file shapes InnoBeweegLab's existing workflow already produces (Excel-based coded/scoring templates, QGIS-exported PNG maps, Word-exported PDFs) without requiring researchers to reformat their existing tools or process. & Confirmed directly against the Perspectieven Oss / Euterpepark file set & \stBT. Oss and Buurtscan files as delivered. \\ \hline
+\rowcolor{light}
+NFR10 & Maintain\-ability by non-special\-ists & Configuration and day-to-day operation must be usable by lab staff without dedicated IT or ML expertise. & InnoBeweegLab is a small, resource-constrained nonprofit-style lab with no dedicated IT department & \stP. Interface for daily work; configuration means editing TOML files; not yet tested with staff. \\ \hline
+NFR11 & Auditability & A complete, tamper-evident history of every claim's drafted/edited/approved states and responsible actor must be retained for the life of the report. & Mission-driven-organizations literature: human oversight is framed as an ethical/accountability requirement toward a vulnerable population (65-plussers), not just an accuracy safeguard & \stBT. Hash-chained logs (\code{test\_tampering\_is\_detected}); earlier reviews archived. \\ \hline
+\rowcolor{light}
+NFR12 & Build-vs-buy justification & Any generic tool or framework the system builds on (e.g.\ an existing RAG framework) must be self-hostable within the zero-budget/16GB constraint and adaptable for qualitative+quantitative multi-source input --- not a closed SaaS product. & Generic-tool-customization survey: no existing QDA/RAG product is adoptable wholesale under these constraints; an open framework adapted in-house is the realistic path & \stB. Open-source stack (Python, Streamlit, Ollama); no SaaS dependency. \\ \hline
+\end{longtable}
+\endgroup

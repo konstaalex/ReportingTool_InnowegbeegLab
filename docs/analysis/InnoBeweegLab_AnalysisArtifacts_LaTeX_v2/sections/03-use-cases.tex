@@ -1,0 +1,219 @@
+\section{Use cases}\label{sec:usecases}
+
+\subsection{Overview and status}
+
+Nine use cases: UC1--UC6 from 29 September, and UC7--UC9 for what was built since. Figure~\ref{fig:ucd} shows which persona takes part in which use case.
+
+\begingroup\renewcommand{\arraystretch}{1.3}\small
+\begin{longtable}{|>{\raggedright\arraybackslash\hspace{0pt}}p{0.9cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{3.3cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{2.6cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{4.0cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{3.0cm}|}
+\hline
+\hdr{ID} & \hdr{Use case} & \hdr{Primary actor} & \hdr{Goal} & \hdr{Status (30 Oct)} \\ \hline
+\endfirsthead
+\hline
+\hdr{ID} & \hdr{Use case} & \hdr{Primary actor} & \hdr{Goal} & \hdr{Status (30 Oct)} \\ \hline
+\endhead
+UC1 & Ingest source data & Field Researcher, Lead Researcher & Bring the three perspectives' raw files into the system as usable input & \stBT \\ \hline
+\rowcolor{light}
+UC2 & Generate a draft themed section & Lead Researcher & Produce narrative text for one of the six themes, grounded in source data & \stBM \\ \hline
+UC3 & Verify a claim against its source & Lead Researcher, Reviewing Colleague & Confirm or reject that a sentence is backed by the source it cites & \stB \\ \hline
+\rowcolor{light}
+UC4 & Correct or approve a claim & Reviewing Colleague & Edit, remove, or sign off a claim before the report is finalized & \stBT \\ \hline
+UC5 & Configure model/provider & Lab Tech Lead & Choose which model runs each pipeline step and where data may go & \stP{} (config files; per run, not per step) \\ \hline
+\rowcolor{light}
+UC6 & Export the approved report & Lead Researcher & Produce a final report document matching InnoBeweegLab's report structure & \stBT \\ \hline
+\addid{UC7} & Analyse the images of a case & Lead Researcher, Field Researcher & Turn map images and infographics into citable, checked evidence & \stBT{} (maps); vision reading: \stBM \\ \hline
+\rowcolor{light}
+\addid{UC8} & Record researcher notes & Field Researcher, Lead Researcher & Make team knowledge that no source file holds citable, with a source & \stBT \\ \hline
+\addid{UC9} & Compare models against the original report & Lab Tech Lead & Measure which model and pipeline produce the best report & \stP{} (approaches A, B; D not built) \\ \hline
+\end{longtable}
+\endgroup
+
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[
+  uc/.style={ellipse, draw=navy, line width=0.7pt, fill=white, text width=3.1cm, inner sep=0pt, minimum height=1.0cm, font=\footnotesize, align=center},
+  ucadd/.style={uc, draw=amber, dashed, fill=amber!6},
+  assoc/.style={draw=inkgray!70, line width=0.5pt},
+  lblL/.style={font=\scriptsize, align=right, text width=1.45cm, anchor=east},
+  lblR/.style={font=\scriptsize, align=left, text width=1.45cm, anchor=west}
+]
+\newcommand{\stick}[2]{%
+  \draw[navy, line width=0.8pt] (#1,#2+0.45) circle (0.17);
+  \draw[navy, line width=0.8pt] (#1,#2+0.28) -- (#1,#2-0.15);
+  \draw[navy, line width=0.8pt] (#1-0.28,#2+0.12) -- (#1+0.28,#2+0.12);
+  \draw[navy, line width=0.8pt] (#1,#2-0.15) -- (#1-0.22,#2-0.5);
+  \draw[navy, line width=0.8pt] (#1,#2-0.15) -- (#1+0.22,#2-0.5);}
+% system boundary
+\draw[light!40!navy, line width=0.6pt, rounded corners=4pt, fill=light!40] (3.1,0.1) rectangle (13.0,9.0);
+\node[font=\small\bfseries, text=navy, anchor=north west] at (3.2,8.95) {Reporting tool};
+% use cases, left column
+\node[uc]    (uc1) at (5.8,8.0) {UC1 Ingest source data};
+\node[ucadd] (uc8) at (5.8,6.8) {UC8 Record researcher notes};
+\node[ucadd] (uc7) at (5.8,5.6) {UC7 Analyse the images};
+\node[uc]    (uc2) at (5.8,4.4) {UC2 Generate a draft section};
+\node[uc]    (uc6) at (5.8,3.2) {UC6 Export the report};
+\node[uc]    (uc3) at (5.8,2.0) {UC3 Verify a claim};
+\node[uc]    (uc4) at (5.8,0.8) {UC4 Correct or approve};
+% use cases, right column
+\node[uc]    (uc5) at (10.5,6.2) {UC5 Configure model/provider};
+\node[ucadd] (uc9) at (10.5,3.6) {UC9 Compare models against the original};
+% actors (labels beside the figure, so no line crosses them)
+\stick{2.1}{7.0}  \node[lblL] at (1.7,7.0) {Sam\\Field\\Researcher};
+\stick{2.1}{4.4}  \node[lblL] at (1.7,4.4) {Anouk\\Lead\\Researcher};
+\stick{2.1}{1.5}  \node[lblL] at (1.7,1.5) {Mika\\Reviewing\\Colleague};
+\stick{13.7}{4.9} \node[lblR] at (14.1,4.9) {Alex\\Lab Tech\\Lead};
+% associations
+\draw[assoc] (2.4,7.12) -- (uc1.west);
+\draw[assoc] (2.4,7.12) -- (uc8.west);
+\draw[assoc] (2.4,7.12) -- (uc7.west);
+\draw[assoc] (2.4,4.52) -- (uc1.west);
+\draw[assoc] (2.4,4.52) -- (uc8.west);
+\draw[assoc] (2.4,4.52) -- (uc7.west);
+\draw[assoc] (2.4,4.52) -- (uc2.west);
+\draw[assoc] (2.4,4.52) -- (uc6.west);
+\draw[assoc] (2.4,4.52) -- (uc3.west);
+\draw[assoc] (2.4,1.62) -- (uc3.west);
+\draw[assoc] (2.4,1.62) -- (uc4.west);
+\draw[assoc] (13.4,5.02) -- (uc5.east);
+\draw[assoc] (13.4,5.02) -- (uc9.east);
+\end{tikzpicture}
+\caption{Use-case diagram. Dashed amber ellipses are the use cases added on 30 October (UC7--UC9). Lines connect each use case to the primary actors in the table above.}
+\label{fig:ucd}
+\end{figure}
+
+% -----------------------------------------------------------------------------
+\newcommand{\ucfield}[1]{\par\smallskip\noindent\textbf{\color{dknavy}#1}\quad}
+\newcommand{\impl}[2]{\begin{calloutbox}{teal}{Implementation, 30 October: #1}#2\end{calloutbox}}
+
+\subsection{UC1 --- Ingest source data}
+\ucfield{Preconditions:} raw files exist in supported formats (coded/raw survey xlsx, expert score-and-remarks xlsx, QGIS map images, PDFs).
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor selects/uploads the source files for a given wijkscan.
+\item System identifies file type and perspective (data/expert/bewoners).
+\item System parses tabular files into rows tagged with theme, where a theme column already exists, or queues untagged rows for the tagging step.
+\item System confirms what was ingested (counts per file/sheet) back to the actor.
+\end{enumerate}
+\ucfield{Alternate/exception flows:} an unsupported file format is rejected with a stated reason; a sheet whose structure matches no known template (neither ``Score per indicator'' nor ``Gecategoriseerde data'' shape, for example) is flagged for manual mapping rather than guessed at.
+\ucfield{Postconditions:} all source rows/images are stored and individually addressable for later citation.
+
+\impl{\stBT}{Oss (Wijkscan) and Buurtscan shapes: \code{ingestion/wijkscan.py}, \code{ingestion/buurtscan.py}, \code{ingestion/parsers/}. Every file gets a SHA-256 checksum, and byte-identical copies are skipped and reported (\code{ingestion/sources.py}). The command line and interface tab~1 show what was ingested per file. The original report PDF is registered as \code{excluded\_reference\_report}: it is used only for evaluation (UC9). Tests: \code{test\_buurtscan\_ingestion.py}, \code{tests/run\_stdlib.py}.}
+
+\subsection{UC2 --- Generate a draft themed section}
+\ucfield{Preconditions:} UC1 complete for at least one perspective touching the chosen theme.
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor picks a theme (e.g.\ ``Sporten'').
+\item System retrieves the relevant rows/images across all ingested perspectives for that theme.
+\item System drafts narrative text, attaching a source reference to each sentence/claim.
+\item System marks any sentence it could not ground with a specific source.
+\end{enumerate}
+\ucfield{Alternate/exception flows:} no source data touches the chosen theme --- the system says so instead of drafting from nothing; the local model is unavailable or a hosted call fails --- the system reports the failure per section rather than silently omitting content.
+\ucfield{Postconditions:} a draft section exists, unpublished, every claim carrying zero or more source links.
+
+\impl{\stBM}{Step 2 runs through an evidence layer (\code{evidence/builder.py}): numbers are computed in code and each claim cites evidence ids, which lead to the cells. Pipelines \code{template}, \code{naive} and \code{staged} (\code{drafting/pipelines.py}, prompt version v2). Since 29 September the same step also drafts Conclusies, Aanleiding and Methode (D18--D20). Tests: \code{test\_staged\_runs\_one\_call\_per\_perspective\_plus\_synthesis}, \code{test\_empty\_pack\_does\_not\_draft\_from\_nothing}, \code{test\_invalid\_json\_is\_recorded\_not\_crashed}. Only the template has run on real data; the local models are not yet installed.}
+
+\subsection{UC3 --- Verify a claim against its source}
+\ucfield{Preconditions:} a draft section exists (UC2).
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor clicks a sentence/claim in the draft.
+\item System shows the exact source excerpt(s) it was generated from --- a spreadsheet cell, a row's average score, or a highlighted region of a map image.
+\item Actor judges whether the claim is supported.
+\end{enumerate}
+\ucfield{Alternate/exception flows:} a claim has no linked source (already flagged in UC2) --- the system shows ``no source found'' rather than an empty or misleading link.
+\ucfield{Postconditions:} none required (a read-only check); often followed by UC4.
+
+\impl{\stB}{Interface tab~3: per claim its check status, the reasons for any flag, and under ``Bewijs en bron'' each evidence item with its source rows (file, sheet, location, value, text). With no evidence it shows ``Geen bron gevonden''. Map evidence shows the measurement; the overlay image that shows what was counted is in tab~1b, not inside the review screen. No automated interface test; the underlying flag is tested (\code{test\_no\_citation}).}
+
+\subsection{UC4 --- Correct or approve a claim}
+\ucfield{Preconditions:} UC3 has been performed on the claim.
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor edits the claim's wording, deletes it, or approves it as-is.
+\item System records the action, the actor, and a timestamp.
+\item Once every claim in a section is approved or edited, the section is marked reviewed.
+\end{enumerate}
+\ucfield{Alternate/exception flows:} actor approves a claim the system had flagged as weakly grounded --- the system still records the override rather than silently accepting it, so the audit trail shows a human explicitly overrode the flag.
+\ucfield{Postconditions:} the claim's status (approved/edited/removed) and the responsible actor are permanently recorded.
+
+\impl{\stBT}{\code{review/session.py}: an append-only, hash-chained event log; the draft itself is never changed. Approving a flagged claim needs \code{confirm\_override} and an extra tick box in the interface. An edited claim is checked again. Regenerating a section archives the earlier review. Tests: \code{test\_flagged\_claim\_needs\_override}, \code{test\_edit\_keeps\_original\_and\_rechecks}, \code{test\_tampering\_is\_detected}, \code{test\_regenerate\_archives\_previous\_review}.}
+
+\subsection{UC5 --- Configure model/provider}
+\ucfield{Preconditions:} system installed on target hardware.
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor sets which model handles local tagging/extraction and which, if any, hosted API handles section drafting.
+\item Actor sets what data classes may leave the device (e.g.\ anonymized text only).
+\item System validates the configuration is internally consistent (e.g.\ refuses a config that would send unredacted resident data to a non-EU hosted API).
+\end{enumerate}
+\ucfield{Alternate/exception flows:} the chosen local model doesn't fit in available RAM --- the system warns before the actor commits the change.
+\ucfield{Postconditions:} subsequent UC1/UC2 runs use the new configuration.
+
+\impl{\stP}{Models are configured in \code{config/models.toml}: local or hosted, memory estimate, data residency. \code{llm/registry.py} refuses a local model above 60\% of 16~GB and a hosted provider without declared data residency, before a run. \code{llm/privacy.py} blocks resident free text to hosted providers unless an experiment sets a logged override, and pseudonymises first. Gaps: there is no settings screen, so configuration means editing a file (NFR10); the drafting model is chosen per run, not per pipeline step; and the only data class with its own rule is resident free text. Tests: \code{test\_model\_ram\_validation}, \code{test\_privacy\_blocks\_hosted\_resident\_text}, \code{test\_privacy\_override\_is\_logged}.}
+
+\subsection{UC6 --- Export the approved report}
+\ucfield{Preconditions:} all sections in scope are marked reviewed (UC4).
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor requests export.
+\item System assembles the approved sections into the InnoBeweegLab report structure (Samenvatting $\rightarrow$ Methode $\rightarrow$ Resultaten per theme $\rightarrow$ Conclusies $\rightarrow$ Aanbevelingen $\rightarrow$ Bronnenlijst $\rightarrow$ Bijlagen).
+\item System produces a document file.
+\end{enumerate}
+\ucfield{Alternate/exception flows:} a section is not yet fully reviewed --- the system blocks export of the full report and states which section is holding it up.
+\ucfield{Postconditions:} a finished, human-approved report document exists outside the tool.
+
+\impl{\stBT}{\code{export/report.py} and \code{export/docx\_report.py}: a Word report in the Wijkscan house layout (structure in \code{config/report\_structure.toml}), charts drawn from survey evidence, maps in the theme text, and an appendix that traces each claim to evidence and cell; also \code{evidence\_map.csv}. A preview for internal reading is marked CONCEPT. Recommendations are not generated; they stay with the researcher. Tests: \code{test\_export\_blocked\_until\_reviewed}, \code{test\_template\_run\_renders\_word\_report}.}
+
+% ----------------------------------------------------------------------------- added
+\subsection{UC7 --- Analyse the images of a case\added}
+\ucfield{Primary actor:} Lead Researcher (confirms readings); Field Researcher (supplies the maps).
+\ucfield{Preconditions:} UC1 has registered the case's map images and infographics; \code{config/images.toml} describes each image (kind, legend, themes, rules).
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor starts the image analysis for a case.
+\item System measures each map in code: the share of coloured buildings per legend class and neighbourhood, the share of homes inside a distance zone, or the number of markers per type.
+\item System writes an overlay image per measurement and stores each measurement as a citable record.
+\item If a vision model is configured, the system reads the printed values on the infographics several times, keeps the median and runs range checks.
+\item Actor confirms, corrects or rejects each reading; the system logs each decision in a hash-chained log.
+\end{enumerate}
+\ucfield{Alternate/exception flows:} a zone map cannot be aligned with the reference map (border agreement below 0.8) --- the measurement is refused, not guessed; two legend classes share a colour --- they are merged and flagged; no vision model is configured --- the infographics are listed as needing one, not skipped silently; the inspiration map shows proposals and is never measured as evidence.
+\ucfield{Postconditions:} measurements and readings are evidence items that drafting can cite; a claim that cites an unconfirmed reading is flagged as weak; rejected readings are dropped.
+\ucfield{Basis:} D11--D16, D26; Background Research v12, Sections 4.9 and 5.5.
+
+\impl{\stBT{} for maps; \stBM{} for readings}{\code{imaging/maps.py}, \code{imaging/pipeline.py}, \code{imaging/vision.py}, \code{imaging/confirm.py}; interface tab~1b. Tests: \code{test\_imaging\_and\_oss.py}, \code{test\_notes\_zones\_conclusions.py}.}
+
+\subsection{UC8 --- Record researcher notes\added}
+\ucfield{Primary actor:} Field Researcher, Lead Researcher.
+\ucfield{Preconditions:} a case exists (UC1).
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor creates the notes template (an Excel file) for the case.
+\item Actor records each note with its kind (walk observation, resident meeting, stakeholder talk, project context, literature), its theme and its source.
+\item System ingests the notes; each note gets an \code{O-\ldots} evidence id.
+\item Drafting may cite notes; project context feeds the Aanleiding section and literature the Bronnenlijst.
+\end{enumerate}
+\ucfield{Alternate/exception flows:} re-ingesting the file replaces the notes instead of duplicating them; the template is never written over a filled file; notes from the resident meeting or a stakeholder talk carry the privacy flag and are attributed to the research team, never presented as the residents' view.
+\ucfield{Postconditions:} team knowledge that no source file holds can be cited with its source.
+\ucfield{Basis:} D17, D19; Background Research v12, Section 2.5 (in a sample of 54 statements from the reference report, 9 relied on such knowledge).
+
+\impl{\stBT}{\code{ingestion/parsers/notes\_parser.py}, \code{note\_evidence} in \code{evidence/builder.py}; interface tab~1. Tests: \code{test\_template\_never\_overwrites\_filled\_notes}, \code{test\_ingest\_notes\_replace\_and\_survive\_reingest}, \code{test\_meeting\_note\_is\_not\_the\_residents\_view}.}
+
+\subsection{UC9 --- Compare models against the original report\added}
+\ucfield{Primary actor:} Lab Tech Lead, as researcher (SQ3).
+\ucfield{Preconditions:} a case whose original human report is registered as reference and excluded from drafting; the local models are downloaded.
+\ucfield{Main flow:}
+\begin{enumerate}
+\item Actor selects the models (\code{[selection]} in \code{config/models.toml}) and a pipeline.
+\item System checks, before the run, that the model server runs and that each model is downloaded.
+\item System drafts every section per model with the same evidence, prompts and pipeline, verifies it and renders a Word report; runs are kept apart from the review sessions.
+\item System compares each report with the original: chapters, coverage of the original's statements, the ceiling the evidence can support, numbers found back, maps and charts; optionally with a local LLM judge.
+\item System writes one comparison table, one row per run.
+\item Actor labels a sample of statements; the system computes Cohen's $\kappa$ between the automatic and the human labels.
+\item Actor may adopt one run as the starting point for the review (UC4).
+\end{enumerate}
+\ucfield{Alternate/exception flows:} a model cannot be reached --- the run is refused before it starts; a hosted judge is refused because the original report is confidential; the original's text never reaches a prompt.
+\ucfield{Postconditions:} a comparison table per case; evaluation outputs that quote the original stay in the git-ignored workspace.
+\ucfield{Basis:} D22--D25; SQ3; implementation brief Sections 15--17.
+
+\impl{\stP}{\code{reports/runs.py}, \code{reports/evaluate.py}, \code{reports/judge.py}, \code{reports/cli.py}; interface tab~5. Tests: \code{test\_reports.py}. Not yet built: the checker pipeline (approach D), selection and seed options for full-report runs, averaging over repeats in the comparison table, and logging of the model's own memory use.}

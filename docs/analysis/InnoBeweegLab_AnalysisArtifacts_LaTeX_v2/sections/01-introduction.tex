@@ -1,0 +1,43 @@
+\section{Introduction}\label{sec:intro}
+
+\subsection{Purpose of this document}
+
+This document collects the analysis artifacts of the AI-supported reporting tool for InnoBeweegLab: personas, scenarios, use cases, user stories, functional and non-functional requirements, their traceability, the main workflow, test cases and the domain model. Version~1 was the Requirements Engineering document of 29 September 2026, with review notes added on 9 October 2026. This version keeps that content word for word and adds three things.
+
+\begin{enumerate}
+\item \textbf{Implementation status.} Every use case, user story, requirement and test case now carries its status on 30 October 2026, with the code module or automated test that shows it.
+\item \textbf{The domain model as built.} Section~\ref{sec:domain} describes the classes that the code implements today, not only the ingestion code and evaluation harness of September.
+\item \textbf{What was built since.} Use cases UC7--UC9, user stories US11--US14, requirements FR17--FR21 and test cases TC15--TC22 cover image analysis, researcher notes and the comparison of models against the original report. They are derived from design decisions D11--D26 in \code{docs/design/reporting-tool-design.md}. Each is marked \added; in tables their ID is amber and marked ``new''. They describe what the system does now and still need my confirmation as requirements, including their MoSCoW priority.
+\end{enumerate}
+
+The review notes of 9 October are kept in Section~\ref{sec:review}. Their optional suggestions have not been applied.
+
+\subsection{Context and scope}
+
+This RE pass targets the AI-assisted reporting tool defined in Alex's Master's research (``From Research Data to Evidence-Based Recommendations: Designing and Evaluating an AI-Supported Reporting System for InnoBeweegLab''): a system that turns InnoBeweegLab's three-perspective Wijkscan/Buurtscan data (data, expert, bewoners) into a traceable, evidence-based draft report, with a mandatory human-in-the-loop validation step. It is grounded in the real Wijkscan Euterpepark Oss case as the reference input/output pair --- see the Perspectieven Oss dataset inventory for the underlying file structure and the report's traceability map.
+
+Two things this pass treats as settled inputs, not open questions: the six-theme taxonomy (Sporten, Actieve mobiliteit, Formeel spelen, Informeel spelen, Ontmoeten, Uitstraling) that already organizes both the source data and the target report, and the constraint envelope from the research plan --- zero project budget, a standard 16GB-RAM/no-GPU office laptop, and mandatory human review before anything is finalized.
+
+In scope: ingesting the three perspectives' raw files, generating a themed draft with per-claim source links, a review/verification interface, and export of an approved report. Out of scope for this pass: the underlying architecture choice itself (single-pass vs.\ multi-agent pipeline, research sub-question SQ3) and the exact model/provider selection (SQ4) --- those remain open empirical questions for the Lab phase. These requirements describe what the system must guarantee regardless of which architecture answers them.
+
+\subsection{How to read the status}\label{sec:status}
+
+\begingroup\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{|>{\raggedright\arraybackslash\hspace{0pt}}p{3.6cm}|>{\raggedright\arraybackslash\hspace{0pt}}p{10.8cm}|}
+\hline
+\hdr{Status} & \hdr{Meaning} \\ \hline
+\endfirsthead
+\hline
+\hdr{Status} & \hdr{Meaning} \\ \hline
+\endhead
+\stBT & Implemented, and an automated test passes. The test is named. \\ \hline
+\rowcolor{light}
+\stB & Implemented and in use, without its own automated test, or checked by hand only. \\ \hline
+\stBM & Implemented and tested with a stand-in model (Fake or Replay provider). Not yet run with a real local model, because the models are not installed yet. \\ \hline
+\rowcolor{light}
+\stP & Part of it is implemented; the gap is named. \\ \hline
+\stN & Not implemented, or not yet measured or evaluated. \\ \hline
+\end{longtable}
+\endgroup
+
+All tests use synthetic fixtures; no research data is in the repository. On 30 October 2026, 94 \code{unittest} tests and the 26 tests in the two standard-library runners (\code{tests/run\_stdlib.py}, \code{tests/run\_stdlib\_evaluation.py}) pass. The pytest-only module \code{tests/test\_evaluation.py} duplicates \code{run\_stdlib\_evaluation.py} and was not run here, because pytest was not installed.
