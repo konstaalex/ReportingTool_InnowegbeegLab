@@ -19,14 +19,14 @@ On 29 September the domain model covered the ingestion code (\code{SourceRecord}
 \node[cls] (claim) at (5.5,-7.4) {\textbf{\small DraftClaim}\nodepart{second}claim\_id, text, claim\_type\\\textbf{evidence\_ids}\\verification: grounded / weak /\\\quad unsupported, flags};
 \node[cls] (state) at (11,-7.4) {\textbf{\small ClaimState}\nodepart{second}claim\_id, original\_text, text\\status: draft / approved /\\\quad edited / rejected\\override, last\_actor, last\_ts};
 \node[cls] (stage) at (0,-11.1) {\textbf{\small StageLog}\nodepart{second}stage, provider, model\\prompt\_sha, latency\_s\\input and output tokens\\evidence\_sent, privacy note};
-\node[cls] (sess) at (5.5,-11.1) {\textbf{\small ReviewSession}\nodepart{second}draft, reviewer, events\\approve(), edit(), reject()\\states(), verify\_chain()};
+\node[cls] (sess) at (5.5,-11.1) {\textbf{\small ReviewSession}\nodepart{second}draft, events (actor on each)\\approve(), edit(), reject()\\states(), verify\_chain()};
 \node[cls] (evt) at (11,-11.1) {\textbf{\small ReviewEvent}\nodepart{second}seq, ts, actor, action\\claim\_id, before, after\\prev\_hash, hash};
 
 \draw[rel] (doc) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {*} (rec);
 \draw[rel] (conf) -- node[m, pos=0.2, above] {*} node[m, pos=0.8, above] {1} (rec);
 \draw[rel] (rec) -- node[m, pos=0.2, right] {1..*} node[m, pos=0.8, right] {*} node[m, midway, left] {cites} (ev);
 \draw[rel] (pack) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {*} (ev);
-\draw[rel] (ev) -- node[m, pos=0.2, right] {1..*} node[m, pos=0.8, right] {*} node[m, midway, left] {cites} (claim);
+\draw[rel] (ev) -- node[m, pos=0.2, right] {0..*} node[m, pos=0.8, right] {*} node[m, midway, left] {cites} (claim);
 \draw[rel] (sd) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {*} (claim);
 \draw[rel] (claim) -- node[m, pos=0.2, above] {1} node[m, pos=0.8, above] {1} (state);
 \draw[rel] (sd) -- node[m, pos=0.2, right] {1} node[m, pos=0.8, right] {*} node[m, midway, left] {stages} (stage);
