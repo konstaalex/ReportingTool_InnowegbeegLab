@@ -7,6 +7,9 @@
 #   CPU=1 bash scripts/week1_timing.sh       # also B with the model kept off the GPU (Ollama num_gpu 0):
 #                                            # closest to the 16 GB CPU-only laptop on a Mac; takes longer
 #   SKIP_PULL=1 bash scripts/week1_timing.sh # models already downloaded
+#   SKIP_INGEST=1 ...                        # keep the workspace as it is (default: re-ingest the Oss
+#                                            # case first, because a workspace from before 30 Oct does
+#                                            # not know where the original report is)
 #
 # These are pilot runs (tag pilot-week1). They size the plan and do NOT count in the comparison
 # (docs/experiments/hypotheses-and-thresholds.md). Each model run starts cold: Ollama unloads
@@ -24,6 +27,22 @@ TAG="${TAG:-pilot-week1}"
 OUT="$WS/week1_timing_$(date +%Y%m%d-%H%M).txt"
 
 python -c "import psutil" 2>/dev/null || { echo "psutil missing: pip install -r requirements.txt"; exit 1; }
+
+# 0. Re-ingest the Oss case with the current code and measure its maps (no model). The workspace
+#    must know where the original report is, or the runs cannot be scored against it.
+OSS="${OSS:-$HOME/Desktop/AppliedIT_Masters/Data-Evidence_prj/Perspectieven Oss}"
+if [[ -z "${SKIP_INGEST:-}" ]]; then
+  echo "== 0. Ingest the Oss case and measure the maps"
+  python -m ingestion.cli ingest-wijkscan "$OSS" --out "$WS" --case-id euterpepark-oss --label "Euterpepark Oss" > /dev/null
+  python -m imaging.cli analyse --workspace "$WS" --case euterpepark-oss
+fi
+python -c "
+import sys; sys.path.insert(0, 'src')
+from app.services import Workspace
+from reports.evaluate import reference_path
+p = reference_path(Workspace('$WS'), 'euterpepark-oss')
+print('original report:', p.name if p else 'NOT FOUND - runs will not be scored')
+"
 
 echo "== 1. The three drafting models (config/models.toml [selection])"
 if [[ -z "${SKIP_PULL:-}" ]]; then
