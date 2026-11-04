@@ -4,6 +4,8 @@ One current set of diagrams for the research, the tool and the code (4 November 
 diagram is a Mermaid text file in [`src/`](src/), rendered to SVG (for reading, zoomable) and PNG
 (at 2×, for the thesis) in [`out/`](out/).
 
+**To browse them all on one page, open [all-diagrams.md](all-diagrams.md).**
+
 - **C4** for the tool as a system: context, containers, components, deployment.
 - **UML** for the code: package, class, sequence, state machine, activity and object diagrams.
 - Flowcharts for the research design and the architectures under study.

@@ -40,7 +40,7 @@ later changes are recorded elsewhere; *earlier version* = kept to show how the d
 |---|---|---|---|
 | [Reporting tool design](design/reporting-tool-design.md) | inputs, the pipeline from source cell to approved report, design decisions D1–D36 with their reasons, verifier checks, review and export, experiment set-up, open questions for InnoBeweegLab, current status and what is still to build | 4 Nov | current (§13 has the latest state) |
 | [Report structure](report-structure.md) | the chapters of a Wijkscan report and where each one's content comes from, figures, traceability in the document, full reports per model, how a generated report is compared with the original | 25 Oct | current |
-| [Design diagrams](diagrams/) (Mermaid sources, SVG and PNG) | research design, experiment design and validation; C4 context, containers, components and deployment; every architecture under study; UML of all the code: packages, class diagrams per package (generated from `src/`, all 69 modules), sequences for ingest, experiment run, review and export, images, state machines, the verifier, the traceability chain | 4 Nov | current |
+| [Design diagrams](diagrams/) (Mermaid sources, SVG and PNG; [all on one page](diagrams/all-diagrams.md)) | research design, experiment design and validation; C4 context, containers, components and deployment; every architecture under study; UML of all the code: packages, class diagrams per package (generated from `src/`, all 69 modules), sequences for ingest, experiment run, review and export, images, state machines, the verifier, the traceability chain | 4 Nov | current |
 
 ## 4. Experiments and evaluation
 
