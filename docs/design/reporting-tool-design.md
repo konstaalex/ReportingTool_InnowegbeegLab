@@ -1,4 +1,9 @@
-# Reporting tool — design (v0.1, 21 Oct 2026)
+# Reporting tool — design (v0.2, updated 4 Nov 2026)
+
+How to read this document: sections 1–9 describe the design of 21 October. Sections 10–13
+record the changes and decisions since then, in order, so the reasoning stays visible. Where an
+early section is out of date it says so and points to the later one. Section 13 gives the current
+state. An overview of all project documents is in `docs/README.md`.
 
 Scope: the Lab-phase prototype that turns one neighbourhood's Buurtscan data into a
 traceable, reviewed draft report. Governing context: `CLAUDE_InnoBeweegLab_App_Brief.md`,
@@ -69,6 +74,9 @@ verifier checks that each number in a claim appears in its cited evidence.
 
 Evidence selection (retrieval variable): `all` theme evidence vs `top_k` by salience; BM25/vector are later conditions.
 
+*Updated in §13:* the conditions are now named by experiment number (E0–E7), E1R (single prompt
+on raw records) is added, and E4 (staged + checker step) is still to be built.
+
 ## 5. Verifier checks
 
 | check | flags | severity |
@@ -91,6 +99,10 @@ Section-level: **coverage gaps** — salient evidence (expert score ≤ 2, top r
 - Output: Markdown + DOCX in the Wijkscan structure, plus `evidence_map.csv` (claim → evidence → file / sheet / cell).
 
 ## 7. Experiments
+
+*Out of date: see §13 and `docs/experiments/`. Experiments now produce full reports of the Oss
+case, scored against the original report.*
+
 `python -m experiments.cli run --definition config/experiments.toml --id E1 --case passewaaij-tiel`
 writes `experiments/runs/<run_id>.json` with config, dataset checksums, prompt version + hash,
 per-stage latency and tokens, peak memory, outputs and verifier metrics
@@ -104,7 +116,7 @@ per-stage latency and tokens, peak memory, outputs and verifier metrics
 5. **Demographics charts.** Should the values shown only in the chart images (age, housing, origin, income) be typed into a sidecar sheet, or read with a vision model? They are flagged for now.
 6. **Reference report.** Is there a human-written Buurtscan report for one of these 10 cases? It's needed as the human reference in the SQ5 comparison.
 
-## 9. Status (21 Oct 2026)
+## 9. Status (21 Oct 2026; current status in §13)
 
 Built and tested (49 unit/integration tests, synthetic fixtures; existing stdlib suites still pass):
 
@@ -175,3 +187,46 @@ The structure of the report, its sources, and the evaluation are described in fu
 **Oss baseline (template pipeline, no model, no researcher notes; word overlap):** 9 of the 11 chapters of the original are present. The Samenvatting needs conclusions, and the template writes none; the Aanleiding needs project-context notes. Coverage of the original's 250 statements is 15%. The ceiling (statements the evidence supports at least partly) is 52%, and coverage of that part is 27%. Numbers found back: 33 of 73. Maps 6/6 and charts 4/4 (titles identical). Photos 0/11, because there are no photo notes yet. The model runs and the judge will be run on the Mac with Ollama.
 
 **New open questions for InnoBeweegLab:** (13) Can the house template files (logo, BVO model, perspectives figure) and the wording of the Bijlage 1 location definitions be shared? (14) Who could be the second rater for the calibration labels?
+
+
+## 13. Update 3–4 Nov 2026: experiment set-up and the week-1 pilot
+
+Plan, hypotheses and thresholds: `docs/experiments/hypotheses-and-thresholds.md`. Pilot results
+and findings P1–P8: `docs/experiments/week1-pilot.md`.
+
+| # | Decision | Why |
+|---|---|---|
+| D27 | **An experiment run produces full reports.** With `unit = "report"` (`config/experiments.toml`) every case × seed becomes one report run (`reports.runs`), scored against the original report (`reports.evaluate`); the experiment record links the report runs and keeps every number needed to compare. `unit = "section"` remains for quick checks (SMOKE). | The comparison against the human report needs whole reports. Pilots and counted runs now go through one mechanism. |
+| D28 | **Test case: `euterpepark-oss`**, the only case with a human-written report; it replaces `passewaaij-tiel` as the default. | Without a reference report a run cannot be scored on coverage. |
+| D29 | **Run records measure the model server, not only Python** (`llm/resources.py`): every second the memory of the Ollama processes and what Ollama reports per loaded model (`/api/ps`), plus Python's and the whole machine's memory. The peak is compared with 0.6 × 16 GB. Records also keep the machine, the code version (with `-dirty`), fingerprints of prompts and configuration, and the model's own timings (loading, reading the prompt, writing). | Python's own peak misses the model completely (NFR5, SQ4). Timings show where the time goes on a CPU. |
+| D30 | **Cold starts and CPU-only runs.** `--cold` unloads every Ollama model before a run, so the time includes loading and the memory is the run's own. `--cpu-only` tells Ollama to keep the model off the GPU (`num_gpu 0`) and allows 30 minutes per model call. | Comparable times; the closest a Mac gets to a 16 GB laptop without a GPU. |
+| D31 | **A cut-off is never silent.** A prompt that arrives as fewer tokens than its text can hold (> 4.5 characters per token), a context window that fills up while writing, or an answer that stops at the output limit makes the stage fail with the reason. It is not retried, and the section is recorded as failed, never dropped. | Pilot P1: Ollama silently cut 5 of the 8 single-prompt calls to the last half of the window. |
+| D32 | **Context window 16,384 tokens** for the three drafting models; **output limit 3,000 tokens** for Conclusies and Aanleiding. | The largest prompt is about 12,400 tokens (pilot round 2); the conclusions did not fit 1,800 tokens (P2). Measured cost for qwen2.5:7b: +0.3–0.5 GB. |
+| D33 | **Where the experiments run.** Quality is compared on the Mac's GPU; time and memory count only from CPU-only runs, and once on a borrowed corporate laptop if possible. Check V1 compares GPU and CPU runs of the same condition and moves to the start of week 2. | The end users have corporate laptops without a GPU that Ollama uses. In the pilot, CPU drafts covered more than GPU drafts twice (P5), so the choice is tested before it is relied on. |
+| D34 | **Current-practice baseline C0: Microsoft 365 Copilot**, which InnoBeweegLab already uses with work accounts. It is run by hand with a fixed protocol (same source files, never the original report, one fixed prompt, three new chats) and scored with the same measures plus a manual source check. A hosted model *inside* the tool (E6) runs only through Azure OpenAI in InnoBeweegLab's own tenant. | Copilot has no interface the tool can call, and its model, settings and instructions cannot be fixed or logged; as a baseline it still answers the stakeholders' question: is the tool better than what we have? |
+| D35 | **Names.** Conditions go by their experiment number: E0 template, E1 single prompt (A), E1R single prompt on raw records, E2 staged (B), E3 staged with evidence selection, E4 staged + checker step, E6 hosted, E7 final. E5 (free multi-agent) is not built: E2 and E4 are the role-separated form the brief allows. | The letters C and D meant different things in the brief and in earlier documents. |
+| D36 | **Fixed in advance and frozen.** Hypotheses, measures, the decision rule and the thresholds are written down before any counted run; the set-up is frozen with the git tag `freeze-1` (planned 13 Nov). Pilot runs carry a tag and do not count. Any change after the freeze goes in the deviation log. | Differences must come from the conditions, not from changes along the way, and the winner must not be chosen after seeing the results. |
+
+**Week-1 pilot in short** (qwen2.5:7b, seed 42, round 2 with the fixes; details in
+`week1-pilot.md`): a full report took 10 min (E1) and 13 min (E2) on the GPU and 77 min (E2) on
+the CPU only. Peak model memory was 5.5–5.7 GB, well under 9.6 GB. No prompt was cut off. E2 had
+far fewer unsupported claims than E1 (8.5% against 26%). On the CPU, two answers got stuck
+numbering invented evidence ids until the output limit (P7); the new check caught both.
+
+**Status (4 Nov 2026).** 107 tests pass (synthetic data only). Built and run on real data:
+ingestion, evidence, the template, E1 and E2 pipelines, the verifier, full-report runs with Word
+output, scoring against the original, memory and time measurement, CPU-only and cold runs. Still to
+build, in order (from `hypotheses-and-thresholds.md` and `week1-pilot.md`):
+
+| Week | What |
+|---|---|
+| 2, before the freeze | E4 (checker step); E1R (raw records); a cap on evidence ids per claim (P7); only code, prompts and configuration count as "dirty" (P8); an evidence fingerprint in every run record; shorter evidence lines in the prompt (to decide); the Copilot import step; check V1; the freeze |
+| 3 | retrieval (BM25, vector, hybrid within the theme); the second-rater workflow (blind labels, κ between raters, agreed labels) |
+| 4 | statistics (mean ± sd over seeds, bootstrap intervals, paired per section, the decision rule, V1) with tables and charts from code; tooling for the user sessions (planted errors, evidence panel on/off) |
+| if needed | Azure OpenAI adapter (E6); instructions for running on a Windows laptop |
+
+**New open questions for InnoBeweegLab** (in the request drafted on 4 Nov): (15) May the Oss source files be used in
+Microsoft 365 Copilot with an InnoBeweegLab work account for baseline C0? (16) Is Azure OpenAI
+available in InnoBeweegLab's Microsoft environment (E6)? (17) Can a standard office laptop be
+borrowed for one evening in week 4? (18) Is there another past Wijkscan report with its source
+data? Question 14 (a second rater) is in the same request.

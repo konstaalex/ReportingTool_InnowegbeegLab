@@ -2,7 +2,8 @@
 
 Research prototype for the InnoBeweegLab master's project: heterogeneous Buurtscan
 data (expert walk, resident questionnaire, demographics, RIVM rules) → traceable,
-reviewed draft report. Design and decisions: `docs/design/reporting-tool-design.md`.
+reviewed draft report. Overview of all documents: `docs/README.md`.
+Design and decisions: `docs/design/reporting-tool-design.md`.
 Analysis artifacts (personas, use cases, user stories, requirements, test cases, domain
 model) with their implementation status: `docs/analysis/` (Markdown, PDF and LaTeX source).
 
