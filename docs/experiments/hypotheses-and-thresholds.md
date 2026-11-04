@@ -1,6 +1,7 @@
 # Hypotheses and pass/fail thresholds
 
-**Status: draft of 3 November 2026, written before any counted run.** Items marked **(P)** are
+**Status: draft of 3 November 2026, written before any counted run; updated 4 November: where
+the experiments run (sections 1, 5 and 8).** Items marked **(P)** are
 proposals that Alex confirms or changes before the first counted run. The git history of this
 file is the record of what was fixed when; any change after the first counted run goes in the
 deviation log at the end, with the reason.
@@ -20,7 +21,9 @@ and SQ4 (does it run on a 16 GB CPU-only laptop). Brief sections 16 (experiment 
 | Not counted | Runs with a tag (e.g. `pilot-week1`) and runs before the freeze. They size the plan only. |
 | Failures | A failed section is kept, never dropped: its chapter scores as missing. A run is repeated only for an infrastructure fault (Ollama crash, power loss, laptop asleep), logged in the deviation log. A poor output is never a reason to repeat. |
 | Primary model | qwen2.5:7b for stages 1 and 2; the three models in stage 3. |
-| Machine | Recorded in every run (`machine`, `runtime.cpu_only`). Feasibility (section 4) is judged on CPU-only runs. |
+| Where quality is compared | Stages 1–3 run on the Mac's GPU (Apple M1 Pro, 16 GB). All conditions of one comparison run on the same setting, never mixed: the same settings give different text on GPU and CPU (`week1-pilot.md`, F5). Whether that matters is tested with V1 (section 5). Decided 4 November. |
+| Where time and memory are measured | The end users work on typical corporate laptops (e.g. a ThinkPad with 16 GB) without a GPU that Ollama uses. Time and memory therefore count only from CPU-only runs (`--cpu-only`): one per condition (seed 42), and three for the final configuration (seeds 42–44). |
+| Machine | Recorded in every run (`machine`, `runtime.cpu_only`). |
 
 ## 2. Measures (all computed by code)
 
@@ -81,10 +84,20 @@ Stage-selection rules, fixed now so the winner is not picked after seeing the re
 
 | Id | Threshold | Source |
 |---|---|---|
-| **F1** memory | Peak model memory ≤ 9.6 GB on a CPU-only run | `config/models.toml [hardware]`: 0.6 × 16 GB (NFR5) |
-| **F2** time | A full report with the final configuration finishes within 8 hours on CPU only, i.e. overnight **(P)** | NFR5 asks for "a practical working session" without a number; Scenario C has the work run overnight |
-| **F3** reliability | Every section drafted in all three seeds of the final configuration **(P)** | – |
+| **F1** memory | Peak model memory ≤ 9.6 GB in every CPU-only run of the final configuration (also reported per condition) | `config/models.toml [hardware]`: 0.6 × 16 GB (NFR5) |
+| **F2** time | A full report with the final configuration finishes within 8 hours on CPU only, i.e. overnight **(P)**. If a corporate laptop can be borrowed (F5), its time decides; otherwise the Mac's CPU-only time, reported as a best case | NFR5 asks for "a practical working session" without a number; Scenario C has the work run overnight |
+| **F3** reliability | Every section drafted in all three CPU-only runs of the final configuration **(P)** | – |
 | **F4** cost | No paid service for local runs (EUR 0) | NFR6 |
+| **F5** target laptop | Descriptive: one run of the final configuration on a typical corporate laptop (e.g. a ThinkPad, 16 GB, CPU only), in week 4, if InnoBeweegLab can lend one. Reported: time, peak model memory, and the memory other programs (Teams, browser, Outlook) already used before the run | the end users' hardware; `week1-pilot.md` F3: the Mac already had 11.7–13.5 GB in use before the runs |
+
+**V1. GPU and CPU differ only by chance (P).** The three CPU-only runs of the final configuration
+(the same runs F1–F3 use) are compared with its three GPU runs on U and S, by the rule of
+section 3. Pass: the outcome is not "better/worse" and the difference is smaller than the MMD.
+Then the comparison on the GPU stands for use on a CPU-only laptop. If V1 fails, this is reported,
+and the stage-1 winner and runner-up are each run three times CPU-only; the choice of pipeline is
+confirmed or changed on those runs. The model, weights, prompts and settings are identical on both;
+the difference comes from the order of floating-point arithmetic, which changes the wording but is
+not expected to favour either side. V1 tests that expectation instead of assuming it.
 
 ## 6. Is the scorer good enough?
 
@@ -115,10 +128,18 @@ described, not tested.
 - One case with a human-written report; results describe that case.
 - The pipeline is chosen on one model; the best pipeline may differ per model.
 - Until the second rater has labelled, S rests on the developer's own labels.
-- Timing on a Mac (with or without its GPU) is not the same as on an office laptop; F1 and F2 are
-  judged on CPU-only runs, and on the target laptop if one is available.
+- Quality is compared on the Mac's GPU, not on the end users' laptops; V1 tests whether that
+  matters.
+- The Mac's CPU is faster than a typical corporate laptop's (it has much faster memory, which sets
+  the writing speed), so its CPU-only times are a best case. Only a run on a borrowed laptop (F5)
+  shows real times.
+- On a corporate 16 GB laptop other programs often use about half the memory. The tool is expected
+  to run with them closed, e.g. overnight; F5 records what was open.
 
 ## 9. To decide before the freeze (13 November)
+
+Decided on 4 November: quality is compared on the GPU; time and memory count from CPU-only runs;
+check V1 and the borrowed-laptop run F5 (sections 1 and 5).
 
 1. Confirm or change every **(P)**.
 2. What D's checker does with a claim it rejects: flag only, or send it back once for revision

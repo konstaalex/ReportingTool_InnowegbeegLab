@@ -1,6 +1,6 @@
 # Week-1 pilot: time, memory and first scores
 
-**Status: in progress. Last update: 4 November 2026, 13:15.**
+**Status: in progress. Last update: 4 November 2026, 13:35.**
 
 These are pilot runs (tag `pilot-week1`). They test the set-up and size the experiment plan;
 they do not count in the comparison (`hypotheses-and-thresholds.md`, section 1). Only numbers
@@ -149,8 +149,12 @@ The pilots above ran with the old settings; they are superseded by the runs belo
 | Mac GPU | 11 / 15 min | ~8–10 hours: two or three evenings |
 | Mac CPU only | ~45 / 60 min | ~30–40 hours: four to five nights |
 
-D (checker step) and the retrieval variants add calls, so these are lower bounds. Proposal, to
-confirm: run the comparison (stages 1–3) on the GPU, where it fits easily, and judge feasibility
-(F1–F3) with CPU-only runs of the final configuration, three seeds, plus one run on an office
-laptop if InnoBeweegLab can lend one. Because of F5, the CPU-only runs are not mixed into the
-comparison.
+D (checker step) and the retrieval variants add calls, so these are lower bounds.
+
+**Decided on 4 November** (`hypotheses-and-thresholds.md`, sections 1 and 5): the quality
+comparison (stages 1–3, three seeds) runs on the GPU, about 8–10 hours. Time and memory count only
+from CPU-only runs, because the end users' corporate laptops have no GPU that Ollama uses: one
+CPU-only run per condition and three for the final configuration, about 13–15 runs of roughly an
+hour, so two or three nights. The final configuration's CPU-only runs also serve check V1 (GPU and
+CPU differ only by chance). One run on a borrowed corporate laptop in week 4 would show real
+times. Because of F5, CPU-only runs are never mixed into the quality comparison.
