@@ -1,0 +1,221 @@
+---
+config:
+  layout: elk
+title: "Code · export: Markdown, evidence map and the Word report"
+---
+classDiagram
+  direction LR
+  namespace export.charts {
+    class ChartData {
+      <<dataclass>>
+      +chart#95;id: str
+      +title: str
+      +categories: list[str]
+      +series: list[tuple[str, list[Optional[float]]]]
+      +measure: str
+      +evidence#95;ids: list[str]
+      +missing#95;options: list[str]
+      +n: dict[str, int]
+      +empty() bool
+    }
+    class m_export_charts["export.charts"] {
+      <<module>>
+      +SERIES#95;COLOURS
+      -#95;norm(s) str
+      -#95;matches(answer, match) bool
+      +chart#95;data(spec, evidence, group#95;labels, fmt) ChartData
+      +render#95;chart(data, path, accent, font, vertical#95;labels, size, dpi) Path
+    }
+  }
+  namespace export.content {
+    class Item {
+      <<dataclass>>
+      +claim#95;id: str
+      +text: str
+      +claim#95;type: str
+      +evidence#95;ids: list[str]
+      +paragraph: int
+      +status: str
+      +verification: Optional[str]
+    }
+    class ReportContent {
+      <<dataclass>>
+      +case#95;id: str
+      +case#95;label: str
+      +case#95;info: dict
+      +sections: dict[str, list[Item]]
+      +evidence: dict[str, Evidence]
+      +store: SourceStore
+      +documents: list[dict]
+      +images#95;dir: Path
+      +status: str
+      +provenance: dict
+      +show#95;ids: bool
+      +report#95;kind() str
+      +items(section) list[Item]
+    }
+    class m_export_content["export.content"] {
+      <<module>>
+      +from#95;sessions(ws, case#95;id, preview) ReportContent
+      +from#95;drafts(ws, case#95;id, drafts, provenance) ReportContent
+    }
+  }
+  namespace export.docx_report {
+    class Figure {
+      <<dataclass>>
+      +kind: str
+      +number: int
+      +caption: str
+      +source: str
+      +evidence#95;ids: list[str]
+      +chapter: str
+    }
+    class WijkscanRenderer {
+      +#95;#95;init#95;#95;(content, out#95;dir, structure)
+      -#95;setup() None
+      -#95;underline#95;colour(rpr) None
+      -#95;field(paragraph, instr, cached, bold, colour, size)
+      -#95;footer(sec) None
+      -#95;no#95;borders(table) None
+      -#95;box#95;border(cell) None
+      -#95;widths(table, cols#95;cm)$ None
+      -#95;table(cols#95;cm, borders)
+      -#95;placeholder(container, text) None
+      -#95;prep(src, max#95;px, name) Path
+      -#95;circle(src, size) Path
+      -#95;caption(container, kind, caption, source, evidence#95;ids) Figure
+      -#95;picture(container, path, width#95;cm) None
+      -#95;claims(container, items) None
+      -#95;cover#95;art() Path
+      -#95;cover() None
+      -#95;colofon() None
+      -#95;contents(headings) None
+      -#95;h1(text) None
+      -#95;h2(text) None
+      -#95;summary() None
+      -#95;claims#95;inline(p, it) None
+      -#95;aanleiding() None
+      -#95;methode() None
+      -#95;house#95;figures(key) None
+      -#95;maps#95;for#95;rule(rule#95;id) list[str]
+      -#95;rule#95;box(parts, container) None
+      -#95;resultaten() None
+      -#95;theme(n, theme#95;cfg) None
+      -#95;split#95;figures(items, charts, section) None
+      -#95;map#95;figure(container, ref, width#95;cm) None
+      -#95;chart(ref) None
+      -#95;notes()
+      -#95;photos(section) None
+      -#95;conclusies() None
+      -#95;aanbevelingen() None
+      -#95;bronnen() None
+      -#95;bijlage1() None
+      -#95;bijlage2() None
+      -#95;bijlage3() None
+      -#95;headings() list[tuple[int, str]]
+      +build() Document
+    }
+    class m_export_docx_report["export.docx_report"] {
+      <<module>>
+      +TEXT#95;W#95;CM
+      -#95;rgb(hex#95;) RGBColor
+      +render#95;docx(content, out#95;dir, filename, structure) tuple[Path, list[Figure]]
+      +to#95;pdf(docx#95;path, timeout) Optional[Path]
+    }
+  }
+  namespace export.report {
+    class ExportBlocked {
+      <<exception>>
+      +#95;#95;init#95;#95;(reasons)
+    }
+    class ReportInputs {
+      <<dataclass>>
+      +case#95;id: str
+      +case#95;label: str
+      +sessions: dict[str, ReviewSession]
+      +evidence: dict[str, Evidence]
+      +store: SourceStore
+      +documents: list[dict]
+      +case#95;info: dict
+      +report#95;kind() str
+    }
+    class m_export_report["export.report"] {
+      <<module>>
+      +blocking#95;reasons(inp, required#95;sections) list[str]
+      -#95;cite(ids) str
+      -#95;claims#95;md(states, preview, with#95;ids) str
+      -#95;join#95;nl(items) str
+      -#95;expert#95;line(ev) Optional[str]
+      -#95;resident#95;line(ev) Optional[str]
+      -#95;data#95;line(ev, inp) Optional[str]
+      -#95;rules#95;line(ev) str
+      -#95;notes#95;line(ev) Optional[str]
+      -#95;plain(line) Optional[str]
+      +methode#95;parts(evidence, store, case#95;id, report#95;kind, case#95;info) dict
+      +methode#95;text(inp) str
+      -#95;visible(st, preview) bool
+      +literature(inp) list[str]
+      +render#95;markdown(inp, preview, with#95;ids, required#95;sections) str
+      +evidence#95;map#95;rows(inp) list[dict]
+      +evidence#95;map#95;csv(inp) str
+      +write#95;docx(markdown, path) Path
+      +export#95;case(inp, out#95;dir, preview, required#95;sections) dict[str, Path]
+    }
+  }
+  namespace evidence.models {
+    class Evidence
+    class m_evidence_models["evidence.models"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.config {
+    class m_ingestion_config["ingestion.config"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.models {
+    class m_ingestion_models["ingestion.models"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.store {
+    class SourceStore
+  }
+  namespace review.session {
+    class ClaimState
+    class ReviewSession
+    class m_review_session["review.session"] {
+      <<module>>
+    }
+  }
+  ReportContent "1" *-- "*" Item : sections
+  ReportContent "1" *-- "*" Evidence : evidence
+  ReportContent --> "1" SourceStore : store
+  ReportInputs "1" *-- "*" ReviewSession : sessions
+  ReportInputs "1" *-- "*" Evidence : evidence
+  ReportInputs --> "1" SourceStore : store
+  m_export_charts ..> Evidence
+  m_export_docx_report ..> ReportContent
+  WijkscanRenderer ..> Figure
+  WijkscanRenderer ..> Item
+  WijkscanRenderer ..> ReportContent
+  m_export_report ..> ClaimState
+  m_export_report ..> Evidence
+  m_export_report ..> SourceStore
+  m_export_docx_report ..> m_evidence_models
+  m_export_docx_report ..> m_export_charts
+  m_export_docx_report ..> m_export_report
+  m_export_docx_report ..> m_ingestion_config
+  m_export_docx_report ..> m_ingestion_models
+  m_export_report ..> m_evidence_models
+  m_export_report ..> m_ingestion_config
+  m_export_report ..> m_ingestion_models
+  m_export_report ..> m_review_session
+  style ClaimState fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style Evidence fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style ReviewSession fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SourceStore fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_evidence_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_config fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_review_session fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3

@@ -1,0 +1,30 @@
+---
+config:
+  layout: elk
+title: "E3 · evidence selection before drafting (stage 2, H4)"
+---
+flowchart LR
+  P[("<b>Evidence pack</b><br/>one theme, e.g. Sporten:<br/>103 items, ~10,500 tokens")]
+  Q["<b>Query</b><br/>section theme and its sub-topics"]
+  subgraph SEL["Selector · one per condition · always within the theme (metadata filter)"]
+    direction TB
+    ALL["<b>all</b><br/>no selection (E2) · built"]
+    TOP["<b>top-25 salience</b><br/>deterministic ranking · built"]
+    BM["<b>BM25</b><br/>keyword match · to build"]
+    VEC["<b>vector</b><br/>multilingual embeddings via Ollama,<br/>in memory, no vector database · to build"]
+    HYB["<b>hybrid</b><br/>BM25 + vector, rank fusion · to build"]
+  end
+  LOG["<b>logged per item</b><br/>evidence id · score · method"]
+  ST["<b>Staged drafting</b> (as E2)"]
+  SC["verifier + evaluation<br/>U and S against 'all'"]
+  P --> ALL & TOP & BM & VEC & HYB
+  Q -. "query text" .-> BM & VEC & HYB
+  ALL & TOP & BM & VEC & HYB --> LOG
+  LOG --> ST --> SC
+
+  classDef built fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  classDef tobuild fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef data fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  class ALL,TOP,ST,SC built
+  class BM,VEC,HYB,LOG tobuild
+  class P,Q data

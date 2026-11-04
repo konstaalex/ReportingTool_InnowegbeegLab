@@ -1,0 +1,194 @@
+---
+config:
+  layout: elk
+title: "Code · llm: model gateway, providers, privacy guard, resource measurement"
+---
+classDiagram
+  direction LR
+  namespace llm.base {
+    class Capabilities {
+      <<dataclass>>
+      +structured#95;output: bool
+      +json#95;mode: bool
+      +context#95;tokens: int
+      +reliable#95;token#95;usage: bool
+      +streaming: bool
+      +vision: bool
+    }
+    class ModelInfo {
+      <<dataclass>>
+      +model#95;id: str
+      +provider: str
+      +model: str
+      +location: str
+      +capabilities: Capabilities
+      +ram#95;gb#95;estimate: Optional[float]
+      +eur#95;per#95;1k#95;input: float
+      +eur#95;per#95;1k#95;output: float
+      +data#95;residency: Optional[str]
+      +to#95;dict() dict
+    }
+    class Message {
+      <<dataclass>>
+      +role: str
+      +content: str
+    }
+    class GenerationRequest {
+      <<dataclass>>
+      +task: str
+      +messages: list[Message]
+      +temperature: float
+      +max#95;output#95;tokens: int
+      +json#95;schema: Optional[dict]
+      +seed: Optional[int]
+      +contains#95;resident#95;free#95;text: bool
+      +images: list[bytes]
+      +prompt#95;sha() str
+    }
+    class GenerationResult {
+      <<dataclass>>
+      +text: str
+      +parsed: Optional[Any]
+      +latency#95;s: float
+      +input#95;tokens: Optional[int]
+      +output#95;tokens: Optional[int]
+      +provider: str
+      +model: str
+      +retries: int
+      +cost#95;eur: float
+      +error: Optional[str]
+      +timings: Optional[dict]
+    }
+    class LLMProvider {
+      <<protocol>>
+      +model#95;info() ModelInfo
+      +generate(request) GenerationResult
+    }
+    class ProviderError {
+      <<exception>>
+    }
+    class PrivacyViolation {
+      <<exception>>
+    }
+  }
+  namespace llm.cli {
+    class m_llm_cli["llm.cli"] {
+      <<module>>
+      -#95;is#95;pulled(tag, pulled) bool
+      +check() int
+      +smoke(model#95;id) int
+      +main(argv) int
+    }
+  }
+  namespace llm.privacy {
+    class m_llm_privacy["llm.privacy"] {
+      <<module>>
+      -#95;PATTERNS
+      +pseudonymise(text) str
+      +check#95;request(request, info, allow#95;hosted#95;resident#95;text) str
+    }
+  }
+  namespace llm.providers {
+    class _Base {
+      +#95;#95;init#95;#95;(info, max#95;retries, timeout#95;s)
+      +model#95;info() ModelInfo
+      -#95;cost(tin, tout) float
+      -#95;with#95;retries(request, call) GenerationResult
+    }
+    class OllamaProvider {
+      +#95;#95;init#95;#95;(info, base#95;url, num#95;ctx, think, num#95;gpu, **kw)
+      +generate(request) GenerationResult
+      +available#95;models() list[str]
+    }
+    class OpenAICompatibleProvider {
+      +#95;#95;init#95;#95;(info, base#95;url, api#95;key#95;env, extra#95;headers, **kw)
+      +generate(request) GenerationResult
+    }
+    class FakeProvider {
+      +generate(request) GenerationResult
+    }
+    class ReplayProvider {
+      +#95;#95;init#95;#95;(info, outputs, **kw)
+      +generate(request) GenerationResult
+    }
+    class m_llm_providers["llm.providers"] {
+      <<module>>
+      +MAX#95;CHARS#95;PER#95;TOKEN
+      -#95;ID#95;RE
+      +extract#95;json(text) Optional[Any]
+      -#95;post#95;json(url, payload, headers, timeout) dict
+      +context#95;problem(prompt#95;chars, prompt#95;tokens, output#95;tokens, num#95;ctx, done#95;reason, max#95;output#95;tokens) Optional[str]
+      +ollama#95;timings(data) Optional[dict]
+      +ollama#95;pulled#95;models(base#95;url) list[str]
+    }
+  }
+  namespace llm.registry {
+    class m_llm_registry["llm.registry"] {
+      <<module>>
+      -#95;info(model#95;id, cfg) ModelInfo
+      +list#95;models() dict[str, dict]
+      +selected#95;models(kind) list[str]
+      +validate#95;model#95;config(model#95;id, target#95;ram#95;gb) list[str]
+      +get#95;provider(model#95;id)
+    }
+  }
+  namespace llm.resources {
+    class MemoryMonitor {
+      +#95;#95;init#95;#95;(base#95;url, interval#95;s, api#95;every)
+      +#95;#95;enter#95;#95;() 'MemoryMonitor'
+      +#95;#95;exit#95;#95;(*exc) None
+      -#95;loop() None
+      -#95;max(a, b)$ Optional[float]
+      +sample(with#95;api) None
+      +summary() dict
+    }
+    class m_llm_resources["llm.resources"] {
+      <<module>>
+      +MB
+      -#95;get#95;json(url, timeout) Optional[dict]
+      +ollama#95;loaded(base#95;url) Optional[list[dict]]
+      +ollama#95;version(base#95;url) Optional[str]
+      +unload#95;ollama#95;models(base#95;url) list[str]
+      -#95;ollama#95;rss#95;mb() tuple[Optional[float], int]
+      -#95;python#95;rss#95;mb() float
+      -#95;system#95;used#95;mb() Optional[float]
+      +memory#95;limit#95;mb() tuple[float, str]
+      +machine#95;info() dict
+    }
+  }
+  namespace ingestion.config {
+    class m_ingestion_config["ingestion.config"] {
+      <<module>>
+    }
+  }
+  ModelInfo --> "1" Capabilities : capabilities
+  GenerationRequest "1" *-- "*" Message : messages
+  _Base <|-- OllamaProvider
+  _Base <|-- OpenAICompatibleProvider
+  _Base <|-- FakeProvider
+  _Base <|-- ReplayProvider
+  LLMProvider ..> GenerationRequest
+  LLMProvider ..> GenerationResult
+  LLMProvider ..> ModelInfo
+  m_llm_cli ..> GenerationRequest
+  m_llm_cli ..> Message
+  m_llm_cli ..> ProviderError
+  m_llm_privacy ..> GenerationRequest
+  m_llm_privacy ..> ModelInfo
+  m_llm_privacy ..> PrivacyViolation
+  m_llm_providers ..> ProviderError
+  _Base ..> GenerationRequest
+  _Base ..> GenerationResult
+  _Base ..> ModelInfo
+  _Base ..> ProviderError
+  m_llm_registry ..> Capabilities
+  m_llm_registry ..> FakeProvider
+  m_llm_registry ..> ModelInfo
+  m_llm_registry ..> OllamaProvider
+  m_llm_registry ..> OpenAICompatibleProvider
+  m_llm_cli ..> m_llm_providers
+  m_llm_cli ..> m_llm_registry
+  m_llm_registry ..> m_ingestion_config
+  m_llm_resources ..> m_ingestion_config
+  LLMProvider <|.. _Base : implements (structural)
+  style m_ingestion_config fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3

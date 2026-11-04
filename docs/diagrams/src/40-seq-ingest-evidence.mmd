@@ -1,0 +1,67 @@
+---
+config:
+  sequence:
+    wrap: false
+    width: 190
+    noteMargin: 8
+title: "Code · sequence: ingest a Wijkscan folder, then build the evidence (UC1)"
+---
+sequenceDiagram
+  autonumber
+  actor R as Researcher
+  participant UI as ui.streamlit_app<br/>(tab 1 · Data) or ingestion.cli
+  participant WS as app.services<br/>Workspace
+  participant WK as ingestion.wijkscan
+  participant P as parsers<br/>(expert, resident, survey_tally, notes)
+  participant RP as parsers.<br/>reference_parser
+  participant ST as ingestion.store<br/>SourceStore
+  participant EB as evidence.builder
+
+  R->>UI: choose folder and case
+  UI->>WS: ingest(folder, case_id, case_label, append=True)
+  WS->>WK: is_wijkscan_folder(folder)
+  WK-->>WS: true (perspective subfolders)
+  WS->>WK: ingest_wijkscan_folder(root, case_id, case_label)
+  loop every file, sorted (temporary ~$ and hidden files skipped)
+    Note over WK: sha256_file · detect_perspective_from_path<br/>new SourceDocument
+    alt same checksum seen before
+      Note over WK: status = duplicate (not read twice)
+    else PDF named like a report
+      Note over WK: status = excluded_reference_report<br/>(evaluation only, never a drafting input)
+    else PDF "vuistregels"
+      Note over WK: remember its checksum (RIVM norms)
+    else workbook with sheet "Notities"
+      WK->>P: notes_parser.parse_notes(path, rel, case_id)
+    else expert workbook (score sheets / totals)
+      WK->>P: expert_parser.parse_score_sheet + parse_section_remarks<br/>or parse_totaal_scores + parse_opmerkingen
+    else residents workbook
+      WK->>P: resident_parser.parse_categorized_sheet<br/>survey_tally_parser.parse_file + apply_survey_mapping
+    else image (png, jpg)
+      Note over WK: one SourceRecord, record_kind = image<br/>(measured later by imaging, diagram 43)
+    else anything else
+      Note over WK: status = unparsed, with the reason
+    end
+    P-->>WK: SourceRecords (file, sheet, cell or row locator)
+    WK->>ST: add_many(records)
+  end
+  WK->>RP: load_rivm_rules(pdf_checksum)
+  RP-->>WK: norm records from config/reference/rivm_vuistregels.toml
+  WK-->>WS: IngestionResult (store, documents, validation, cases)
+  opt workspace already holds data
+    Note over WS: _merge(new): keep other cases, researcher notes and<br/>image measurements whose image did not change
+  end
+  Note over WS: result.save(workspace/ingest)<br/>clear cached evidence
+  WS-->>UI: summary (files per status, records per perspective)
+
+  Note over R,EB: later, the first time a section is drafted or reviewed
+  UI->>WS: evidence(case_id)
+  alt evidence/<case>.json exists and is newer than store.json and confirmations.json
+    Note over WS: EvidencePack.from_dict (cached)
+  else build again
+    WS->>EB: build_case_evidence(store, case_id, confirmations)
+    Note over EB: expert · remark · survey · tally · coded · demografie ·<br/>image · norm · comparison · note evidence (numbers computed here)
+    Note over EB: one EvidencePack per theme, Algemeen, Aanleiding,<br/>Conclusies from cross_theme_evidence
+    EB-->>WS: packs, with built_with = config fingerprints
+    Note over WS: write evidence/<case>.json
+  end
+  WS-->>UI: dict[section, EvidencePack]

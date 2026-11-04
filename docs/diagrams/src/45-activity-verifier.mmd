@@ -1,0 +1,63 @@
+---
+config:
+  layout: elk
+  elk:
+    considerModelOrder: NODES_AND_EDGES
+    forceNodeModelOrder: true
+title: "Code · activity: verification.checks.verify_claim and verify_section (deterministic, no model)"
+---
+flowchart TB
+  S(["verify_section(draft, pack, index)<br/>load config/reference/writing_rules.toml"])
+  S --> EACH["for every claim: verify_claim(claim, section, index, rules)"]
+  EACH --> C0["cited = the claim's evidence ids found in the index<br/>invalid = ids not in the index"]
+
+  C0 --> C1{{"no evidence ids?"}}
+  C1 -- yes --> F1["no_citation · unsupported"]
+  C1 -- no --> C2{{"any invalid id?"}}
+  F1 --> C2
+  C2 -- yes --> F2["invalid_citation · unsupported"]
+  C2 -- no --> C3{{"a number in the text that is not in the cited evidence?<br/>(number_supported, rounding by the decimals written)"}}
+  F2 --> C3
+  C3 -- yes --> F3["unsupported_number · unsupported"]
+  C3 -- no --> C4{{"names residents, experts or the RIVM rules<br/>without citing that source?"}}
+  F3 --> C4
+  C4 -- yes --> F4["attribution_mismatch · weak"]
+  C4 -- no --> C5{{"majority or 'de bewoners' wording on resident evidence<br/>that is anecdotal only, or no cited share ≥ 50%?"}}
+  F4 --> C5
+  C5 -- yes --> F5["overgeneralisation · weak"]
+  C5 -- no --> C6{{"says a RIVM rule is (not) met, without a<br/>map measurement that tests the rule?"}}
+  F5 --> C6
+  C6 -- yes --> F6["norm_not_measured · weak"]
+  C6 -- no --> C7{{"cites a model reading of an image<br/>that no researcher confirmed?"}}
+  F6 --> C7
+  C7 -- yes --> F7["image_unconfirmed · weak"]
+  C7 -- no --> C8{{"says residents, but every cited answer<br/>comes from a stakeholder (professional)?"}}
+  F7 --> C8
+  C8 -- yes --> F8["attribution_mismatch · weak"]
+  C8 -- no --> C9{{"theme section citing evidence of another theme?<br/>(Conclusies may cite across themes)"}}
+  F8 --> C9
+  C9 -- yes --> F9["theme_mismatch · weak"]
+  C9 -- no --> ST["style_flags(text, rules): passive voice, sentences over 20 words, listed phrases<br/>severity style: shown to the reviewer, never changes the status"]
+  F9 --> ST
+
+  ST --> D{{"which flags (style left out)?"}}
+  D -- "any unsupported" --> U["status = unsupported"]
+  D -- "else any weak" --> W["status = weak"]
+  D -- "none" --> G["status = grounded"]
+  U & W & G --> OUT["claim.verification = status, flags, numbers in text and unsupported,<br/>cited_valid, cited_invalid"]
+
+  OUT --> SEC["section checks: coverage_gaps = salient evidence not cited ·<br/>repeated_openers · metrics (grounded / weak / unsupported rate,<br/>citation validity, number support, coverage_salient, claim types, perspectives)"]
+  SEC --> E(["draft.section_checks · shown in tab 3, counted in every run"])
+
+  NOTE["The verifier flags, it never rewrites a claim (design decision: flag, never rewrite).<br/>The same verify_claim runs again on every edit during review (recheck)."]
+
+  classDef un fill:#fbe3e3,stroke:#a33a3a,color:#1d2733
+  classDef weak fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef ok fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  classDef step fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  classDef note fill:#fff8e6,stroke:#d4a017,color:#1d2733
+  class F1,F2,F3,U un
+  class F4,F5,F6,F7,F8,F9,W weak
+  class G ok
+  class S,EACH,C0,ST,OUT,SEC,E step
+  class NOTE note

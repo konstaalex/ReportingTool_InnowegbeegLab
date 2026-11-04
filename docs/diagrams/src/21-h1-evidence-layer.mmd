@@ -1,0 +1,44 @@
+---
+config:
+  layout: elk
+title: "H1 · the evidence layer: E1 (computed evidence) against E1R (raw records), same model and prompt shape"
+---
+flowchart TB
+  F[("<b>Oss source files</b><br/>survey tallies · coded answers · expert scores<br/>and remarks · map images · notes")]
+  ING["<b>Ingestion</b> (both)<br/>one SourceRecord per row, cell group or image<br/>id = hash(perspective, file, sheet, locator)"]
+  F --> ING
+
+  subgraph A["E1 · with the evidence layer"]
+    direction TB
+    B["<b>Evidence builder</b> (code)<br/>counts, shares, averages, map measurements,<br/>comparisons → 'B-SP-03: 7 of 23 residents (30%) …'<br/>numbers stored in data, ids of source records kept"]
+    PA["<b>Single prompt</b><br/>evidence lines: [id] (perspective) statement"]
+    CA["<b>Claims</b> citing evidence ids<br/>the model copies numbers, never computes"]
+    VA["<b>Verifier</b><br/>every number in a claim must occur in its cited evidence"]
+    B --> PA --> CA --> VA
+  end
+
+  subgraph R["E1R · without the evidence layer"]
+    direction TB
+    RR["<b>Raw records as text</b><br/>rows and cells with their record ids;<br/>format still to decide (open decision 3)"]
+    PR["<b>Single prompt</b><br/>same instructions, same output format"]
+    CR["<b>Claims</b> citing record ids<br/>the model has to count and compute itself"]
+    VR["<b>Verifier, record mode</b> (to build)<br/>numbers checked against record values"]
+    RR --> PR --> CR --> VR
+  end
+
+  ING --> B
+  ING --> RR
+  EVAL["<b>Same evaluation</b> against the original report<br/>U · S · numbers found back · number conflicts<br/>the number measures do not depend on the citation format"]
+  VA --> EVAL
+  VR --> EVAL
+  H1{{"<b>H1</b> E1 has fewer unsupported claims (≥ 5 points)<br/>and fewer wrong numbers than E1R"}}
+  EVAL --> H1
+
+  classDef built fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  classDef tobuild fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef data fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  classDef key fill:#1f3a5f,stroke:#1f3a5f,color:#ffffff
+  class B,PA,CA,VA,ING built
+  class RR,PR,CR,VR tobuild
+  class F,EVAL data
+  class H1 key

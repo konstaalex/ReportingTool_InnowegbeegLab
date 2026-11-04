@@ -1,0 +1,56 @@
+---
+config:
+  layout: elk
+title: "C4 level 3 · Components of the core library (main dependencies)"
+---
+flowchart TB
+  UI["<b>Review interface</b> / <b>CLIs</b><br/>[Containers]"]
+
+  subgraph CORE["Core library  [Container]"]
+    WSF["<b>Workspace facade</b><br/>[app.services]<br/>one API for UI and CLIs: ingest,<br/>evidence, generate, review, export,<br/>report runs, evaluation"]
+    ING["<b>Ingestion</b><br/>[ingestion]<br/>parsers per template, checksums,<br/>dedup, theme tagging → SourceRecords"]
+    IMG["<b>Image analysis</b><br/>[imaging]<br/>maps measured in code; infographics read<br/>by a vision model, confirmed by a researcher"]
+    EVB["<b>Evidence builder</b><br/>[evidence]<br/>computes counts, shares, averages,<br/>comparisons → Evidence with ids"]
+    DRF["<b>Drafting pipelines</b><br/>[drafting]<br/>template · naive · staged · single-call;<br/>versioned prompts; claims cite ids"]
+    LLM["<b>Model layer</b><br/>[llm]<br/>providers, registry, privacy guard,<br/>memory monitor"]
+    VER["<b>Verifier</b><br/>[verification]<br/>flags per claim: grounded / weak /<br/>unsupported; never rewrites"]
+    REV["<b>Review log</b><br/>[review]<br/>approve / edit / reject; append-only,<br/>hash-chained events"]
+    EXP["<b>Export</b><br/>[export]<br/>gate; Word report in house style;<br/>charts from evidence; evidence map"]
+    REP["<b>Report runs and evaluation</b><br/>[reports]<br/>full report per model; score against<br/>the original; local judge; κ"]
+    XP["<b>Experiment runner</b><br/>[experiments]<br/>conditions × seeds; provenance;<br/>run records; summaries"]
+    EVL["<b>Gold-set harness</b><br/>[evaluation · legacy]<br/>citation metrics on synthetic gold<br/>claims (TC5–TC8)"]
+  end
+
+  WSD[("Workspace files")]
+  OLL["Ollama"]
+  ORIG[("Original report")]
+
+  UI --> WSF
+  UI --> XP
+  WSF --> ING & IMG & EVB & DRF & VER & REV & EXP & REP
+  ING --> WSD
+  IMG --> ING
+  IMG -- "vision models" --> LLM
+  EVB -- "reads records" --> ING
+  DRF -- "reads evidence packs" --> EVB
+  DRF -- "generate()" --> LLM
+  VER -- "checks claims against" --> EVB
+  REV -- "re-verifies edits" --> VER
+  EXP -- "approved claims" --> REV
+  REP -- "drafts every section" --> DRF
+  REP -- "verifies" --> VER
+  REP -- "renders" --> EXP
+  REP -- "reads" --> ORIG
+  XP -- "report runs + evaluation" --> REP
+  XP --> WSF
+  LLM -- "HTTP" --> OLL
+  WSF --> WSD
+
+  classDef cont fill:#438dd5,stroke:#2e6295,color:#ffffff
+  classDef comp fill:#85bbf0,stroke:#5d8ab5,color:#0b2340
+  classDef legacy fill:#d6e6f7,stroke:#5d8ab5,color:#0b2340,stroke-dasharray: 5 3
+  classDef ext fill:#8c8c8c,stroke:#6b6b6b,color:#ffffff
+  class UI cont
+  class WSF,ING,IMG,EVB,DRF,LLM,VER,REV,EXP,REP,XP comp
+  class EVL legacy
+  class WSD,OLL,ORIG ext

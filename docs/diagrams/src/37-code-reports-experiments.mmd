@@ -1,0 +1,312 @@
+---
+config:
+  layout: elk
+title: "Code · reports and experiments: full runs, scoring, experiment records"
+---
+classDiagram
+  direction TB
+  namespace experiments.cli {
+    class m_experiments_cli["experiments.cli"] {
+      <<module>>
+      -#95;pct(x) str
+      -#95;mean(sm, k)
+      -#95;print#95;summary(rows) None
+      +main(argv) int
+    }
+  }
+  namespace experiments.provenance {
+    class m_experiments_provenance["experiments.provenance"] {
+      <<module>>
+      +git#95;commit() Optional[str]
+      +fingerprints(prompt#95;version) dict
+    }
+  }
+  namespace experiments.runner {
+    class m_experiments_runner["experiments.runner"] {
+      <<module>>
+      +METRICS
+      +REPORT#95;METRICS
+      +EVAL#95;METRICS
+      +experiment#95;definition(exp#95;id) dict
+      -#95;base#95;record(ws, run#95;id, d, cases, provider, model#95;id, tag) dict
+      -#95;provider#95;for(d, model#95;id)
+      +run#95;experiment(ws, exp#95;id, cases, sections, model, seeds, verbose, cpu#95;only, cold, tag, evaluate, reference#95;pdf) dict
+      -#95;eval#95;metrics(summary) dict
+      -#95;run#95;reports(ws, d, cases, sections, model#95;id, seeds, verbose, cpu#95;only, cold, tag, evaluate, reference#95;pdf) dict
+      -#95;report#95;line(exp#95;id, r) str
+      -#95;stats(vals) Optional[dict]
+      +summarise#95;reports(results) dict
+      -#95;run#95;sections(ws, d, cases, sections, model#95;id, seeds, verbose, cpu#95;only, cold, tag) dict
+      -#95;save(ws, record) dict
+      +summarise#95;results(results) dict
+      +summarise#95;runs(ws, tag) list[dict]
+    }
+  }
+  namespace reports.cli {
+    class m_reports_cli["reports.cli"] {
+      <<module>>
+      -#95;pct(x) str
+      -#95;resolve#95;run(ws, case, run) str
+      -#95;print#95;eval(summary) None
+      +main(argv) int
+    }
+  }
+  namespace reports.evaluate {
+    class Matcher {
+      +#95;#95;init#95;#95;(corpus)
+      +weight(term) float
+      +prepare(units)$ list[tuple[set, set]]
+      +score(ref, cand) float
+      +best(ref, cands) tuple[float, int]
+    }
+    class m_reports_evaluate["reports.evaluate"] {
+      <<module>>
+      +SUPPORTABLE
+      +MIN#95;SCORE#95;FOR#95;JUDGE
+      +MIN#95;WORDS
+      +CHART#95;MATCH
+      +CHAPTER#95;HEADINGS
+      +SCORED
+      +STOP
+      -#95;NUM
+      -#95;SENT
+      -#95;CAPTION
+      -#95;PLACEHOLDER
+      -#95;THEME#95;HEADING
+      +SECTION#95;NL
+      +METHOD#95;NL
+      +COMPARISON#95;COLUMNS
+      +PCT#95;COLUMNS
+      +CATS
+      -#95;stem(w) str
+      +terms(text) set[str]
+      +numbers(text) set[float]
+      +sentences(text) list[str]
+      +label(score) str
+      -#95;family(fontname) str
+      +style#95;profile(words) dict
+      -#95;word#95;kind(w, prof) str
+      -#95;fragments(words, prof, page#95;height) list[dict]
+      -#95;clean(text) str
+      -#95;chart#95;titles(frags) dict[int, str]
+      +load#95;reference(pdf#95;path) dict
+      +reference#95;path(ws, case#95;id) Optional[Path]
+      +generated#95;sections(ws, case#95;id, drafts) dict[str, list[str]]
+      -#95;map#95;names() list[str]
+      -#95;classify(title, kind, names) tuple[str, str]
+      +figure#95;comparison(reference, run#95;figures) dict
+      +top#95;candidates(matcher, ref, cands, k) list[tuple[float, int]]
+      +evaluate(reference, generated, evidence#95;statements, run#95;figures, judge, progress) dict
+      -#95;pct(x) str
+      -#95;method#95;nl(method) str
+      +render#95;markdown(result, title) str
+      +write#95;outputs(result, out#95;dir, title) dict[str, Path]
+      +evidence#95;statements(ws, case#95;id) list[str]
+      +make#95;judge(ws, case#95;id, judge#95;model, allow#95;hosted)
+      -#95;reference(ws, case#95;id, reference#95;pdf) dict
+      +evaluate#95;run(ws, case#95;id, run#95;id, reference#95;pdf, reference, judge#95;model, allow#95;hosted, judge, progress) dict
+      +comparison#95;row(run#95;id, summary) dict
+      +compare#95;runs(ws, case#95;id, run#95;ids, reference#95;pdf, judge#95;model, allow#95;hosted, progress) dict
+      -#95;kappa(auto, human) tuple[float, float]
+      -#95;agreement(rows, human#95;col, auto#95;col, score#95;col) Optional[dict]
+      +calibrate(alignment#95;csv) dict
+    }
+  }
+  namespace reports.judge {
+    class Judge {
+      +#95;#95;init#95;#95;(provider, cache#95;path, allow#95;hosted)
+      -#95;key(statement, candidates, kind) str
+      +#95;#95;call#95;#95;(statement, candidates, kind) Optional[dict]
+      +save() None
+    }
+    class m_reports_judge["reports.judge"] {
+      <<module>>
+      +LABELS
+      +SYSTEM
+      +SOURCES
+      +INSTRUCTION
+      +SCHEMA
+      +build#95;prompt(statement, candidates, kind) str
+    }
+  }
+  namespace reports.runs {
+    class m_reports_runs["reports.runs"] {
+      <<module>>
+      +REPORT#95;SECTIONS
+      +TEMPLATE
+      -#95;slug(s) str
+      +runs#95;dir(ws, case#95;id) Path
+      +preflight(provider) None
+      -#95;stage#95;timings(stages) dict
+      +generate#95;report#95;run(ws, case#95;id, model#95;id, pipeline, prompt#95;version, sections, seed, selection, render, pdf, progress, temperature, include#95;quotes, allow#95;resident#95;text#95;to#95;hosted, cpu#95;only, cold, tag, experiment#95;id) dict
+      +latest#95;runs(ws, case#95;id) dict[str, str]
+      +list#95;runs(ws, case#95;id) list[dict]
+      +load#95;run(ws, case#95;id, run#95;id) tuple[dict, dict[str, SectionDraft]]
+      +run#95;path(ws, case#95;id, run#95;id) Path
+      +adopt#95;for#95;review(ws, case#95;id, run#95;id, reviewer) list[str]
+    }
+  }
+  namespace app.services {
+    class Workspace
+  }
+  namespace drafting.models {
+    class SectionDraft
+    class m_drafting_models["drafting.models"] {
+      <<module>>
+    }
+  }
+  namespace drafting.pipelines {
+    class PipelineConfig
+    class m_drafting_pipelines["drafting.pipelines"] {
+      <<module>>
+    }
+  }
+  namespace drafting.prompts {
+    class m_drafting_prompts["drafting.prompts"] {
+      <<module>>
+    }
+  }
+  namespace evidence.builder {
+    class m_evidence_builder["evidence.builder"] {
+      <<module>>
+    }
+  }
+  namespace evidence.models {
+    class m_evidence_models["evidence.models"] {
+      <<module>>
+    }
+  }
+  namespace export.content {
+    class m_export_content["export.content"] {
+      <<module>>
+    }
+  }
+  namespace export.docx_report {
+    class m_export_docx_report["export.docx_report"] {
+      <<module>>
+    }
+  }
+  namespace export.report {
+    class m_export_report["export.report"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.config {
+    class m_ingestion_config["ingestion.config"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.models {
+    class m_ingestion_models["ingestion.models"] {
+      <<module>>
+    }
+  }
+  namespace llm.base {
+    class GenerationRequest
+    class Message
+    class PrivacyViolation
+  }
+  namespace llm.cli {
+    class m_llm_cli["llm.cli"] {
+      <<module>>
+    }
+  }
+  namespace llm.providers {
+    class OllamaProvider
+    class m_llm_providers["llm.providers"] {
+      <<module>>
+    }
+  }
+  namespace llm.registry {
+    class m_llm_registry["llm.registry"] {
+      <<module>>
+    }
+  }
+  namespace llm.resources {
+    class MemoryMonitor
+    class m_llm_resources["llm.resources"] {
+      <<module>>
+    }
+  }
+  namespace review.session {
+    class ReviewSession
+  }
+  namespace verification.checks {
+    class m_verification_checks["verification.checks"] {
+      <<module>>
+    }
+  }
+  m_experiments_cli ..> Workspace
+  m_experiments_runner ..> MemoryMonitor
+  m_experiments_runner ..> OllamaProvider
+  m_experiments_runner ..> PipelineConfig
+  m_experiments_runner ..> Workspace
+  m_reports_cli ..> Workspace
+  m_reports_evaluate ..> Judge
+  Judge ..> GenerationRequest
+  Judge ..> Message
+  Judge ..> PrivacyViolation
+  m_reports_runs ..> MemoryMonitor
+  m_reports_runs ..> OllamaProvider
+  m_reports_runs ..> PipelineConfig
+  m_reports_runs ..> ReviewSession
+  m_reports_runs ..> SectionDraft
+  m_experiments_cli ..> m_experiments_runner
+  m_experiments_provenance ..> m_drafting_prompts
+  m_experiments_provenance ..> m_ingestion_config
+  m_experiments_runner ..> m_drafting_models
+  m_experiments_runner ..> m_drafting_pipelines
+  m_experiments_runner ..> m_evidence_builder
+  m_experiments_runner ..> m_experiments_provenance
+  m_experiments_runner ..> m_ingestion_config
+  m_experiments_runner ..> m_llm_registry
+  m_experiments_runner ..> m_llm_resources
+  m_experiments_runner ..> m_reports_evaluate
+  m_experiments_runner ..> m_reports_runs
+  m_experiments_runner ..> m_verification_checks
+  m_reports_cli ..> m_llm_registry
+  m_reports_cli ..> m_reports_evaluate
+  m_reports_cli ..> m_reports_runs
+  m_reports_evaluate ..> m_evidence_models
+  m_reports_evaluate ..> m_export_report
+  m_reports_evaluate ..> m_ingestion_config
+  m_reports_evaluate ..> m_ingestion_models
+  m_reports_evaluate ..> m_llm_registry
+  m_reports_evaluate ..> m_reports_runs
+  m_reports_judge ..> m_llm_providers
+  m_reports_runs ..> m_drafting_models
+  m_reports_runs ..> m_drafting_pipelines
+  m_reports_runs ..> m_evidence_builder
+  m_reports_runs ..> m_evidence_models
+  m_reports_runs ..> m_experiments_provenance
+  m_reports_runs ..> m_export_content
+  m_reports_runs ..> m_export_docx_report
+  m_reports_runs ..> m_ingestion_models
+  m_reports_runs ..> m_llm_cli
+  m_reports_runs ..> m_llm_registry
+  m_reports_runs ..> m_llm_resources
+  m_reports_runs ..> m_verification_checks
+  style GenerationRequest fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style MemoryMonitor fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style Message fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style OllamaProvider fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style PipelineConfig fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style PrivacyViolation fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style ReviewSession fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SectionDraft fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style Workspace fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_drafting_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_drafting_pipelines fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_drafting_prompts fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_evidence_builder fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_evidence_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_export_content fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_export_docx_report fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_export_report fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_config fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_llm_cli fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_llm_providers fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_llm_registry fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_llm_resources fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_verification_checks fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3

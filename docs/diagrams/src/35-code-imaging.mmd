@@ -1,0 +1,227 @@
+---
+config:
+  layout: elk
+title: "Code · imaging: maps measured in code, infographics read by a model"
+---
+classDiagram
+  direction LR
+  namespace imaging.cli {
+    class m_imaging_cli["imaging.cli"] {
+      <<module>>
+      +main(argv) int
+    }
+  }
+  namespace imaging.confirm {
+    class ConfirmationEvent {
+      <<dataclass>>
+      +seq: int
+      +ts: str
+      +actor: str
+      +action: str
+      +record#95;id: str
+      +value: Optional[float]
+      +note: Optional[str]
+      +prev#95;hash: str
+      +hash: str
+      +compute#95;hash() str
+    }
+    class ConfirmationLog {
+      +#95;#95;init#95;#95;(path)
+      -#95;append(actor, action, record#95;id, value, note) None
+      +confirm(record#95;id, actor, note) None
+      +correct(record#95;id, value, actor, note) None
+      +reject(record#95;id, actor, note) None
+      +reopen(record#95;id, actor, note) None
+      +status(record#95;id) tuple[str, Optional[float], Optional[ConfirmationEvent]]
+      +verify#95;chain() list[str]
+      +save() None
+    }
+    class m_imaging_confirm["imaging.confirm"] {
+      <<module>>
+      +ACTIONS
+    }
+  }
+  namespace imaging.evaluate {
+    class m_imaging_evaluate["imaging.evaluate"] {
+      <<module>>
+      +AREA#95;ALIASES
+      +STOP
+      -#95;norm(s) str
+      +norm#95;area(a) str
+      -#95;tokens(s) set[str]
+      -#95;sim(a, b) float
+      +load#95;gold(path) dict
+      +score#95;readings(records, gold) dict
+    }
+  }
+  namespace imaging.maps {
+    class Swatch {
+      <<dataclass>>
+      +rgb: tuple[int, int, int]
+      +bbox: tuple[int, int, int, int]
+      +area: int
+      +label: Optional[str]
+      +shared#95;with: list[str]
+    }
+    class Region {
+      <<dataclass>>
+      +region#95;id: int
+      +name: Optional[str]
+      +pixels: int
+      +bbox: tuple[int, int, int, int]
+      +centroid#95;rel: tuple[float, float]
+    }
+    class RegionTemplate {
+      <<dataclass>>
+      +image#95;id: str
+      +img: np.ndarray
+      +regions: np.ndarray
+      +names: dict[int, str]
+      +homes: np.ndarray
+      +from#95;map(image#95;id, path, legend, seeds, tolerance, legend#95;search)$ 'RegionTemplate'
+    }
+    class MapMeasurement {
+      <<dataclass>>
+      +image: str
+      +method: str
+      +classes: list[dict]
+      +total: dict
+      +per#95;region: dict[str, dict]
+      +unnamed#95;regions: list[dict]
+      +warnings: list[str]
+      +params: dict
+      +overlay#95;path: Optional[str]
+      +shares(counts) dict[str, Optional[float]]
+      +classified#95;pixels(counts) int
+      +to#95;dict() dict
+    }
+    class m_imaging_maps["imaging.maps"] {
+      <<module>>
+      +BORDER#95;OK
+      +ZONE#95;THRESHOLD
+      +load#95;rgb(path) np.ndarray
+      +detect#95;swatches(img, search, min#95;rel#95;area, max#95;rel#95;area, min#95;saturation) list[Swatch]
+      +label#95;swatches(swatches, labels) tuple[list[Swatch], list[str]]
+      +boundary#95;mask(img, dark, open#95;iter, bridge) np.ndarray
+      +detect#95;regions(img, seeds, min#95;rel#95;area) tuple[np.ndarray, list[Region], tuple[int, int, int, int]]
+      -#95;resize#95;nearest(arr, factor) np.ndarray
+      +edge#95;map(img, scale) np.ndarray
+      -#95;ncc#95;search(a, b, min#95;overlap) tuple[float, int, int]
+      -#95;overlap(src#95;shape, dst#95;shape, dy, dx)
+      -#95;ncc#95;at(a, b, dy, dx) float
+      +warp(arr, zoom, offset#95;xy, shape) np.ndarray
+      +align#95;basemap(ref#95;img, target#95;img, scale, zoom#95;range, zoom#95;step) dict
+      +border#95;agreement(ref#95;img, info, target#95;img, contrast, window, tol) float
+      +align#95;regions(ref#95;img, ref#95;regions, target#95;img, scale, zoom#95;range, zoom#95;step) tuple[np.ndarray, dict]
+      +classify(img, swatches, tolerance) np.ndarray
+      +measure#95;classes(path, labels, seeds, tolerance, legend#95;search, overlay#95;to) MapMeasurement
+      +write#95;overlay(img, reg#95;img, regions, cls, swatches, out, max#95;side) Path
+      +count#95;objects(path, labels, skip#95;labels, seeds, tolerance, min#95;pixels, legend#95;search, region#95;template) MapMeasurement
+      +tint#95;score(img, rgb) np.ndarray
+      +measure#95;zone#95;coverage(path, labels, zone#95;label, template, threshold, legend#95;search, overlay#95;to) MapMeasurement
+      +coverage#95;pct(c) tuple[Optional[int], Optional[int]]
+      +write#95;zone#95;overlay(img, reg, names, homes, inzone, per#95;region, out, max#95;side) Path
+    }
+  }
+  namespace imaging.pipeline {
+    class m_imaging_pipeline["imaging.pipeline"] {
+      <<module>>
+      +STUDY#95;AREA
+      -#95;cfg#95;for(record) dict
+      -#95;case#95;cfg(case#95;id) dict
+      -#95;measurement#95;records(rec, cfg, m, kind) list[SourceRecord]
+      +analyse#95;case#95;images(store, case#95;id, out#95;dir, vision#95;provider, samples, verbose) dict
+      -#95;observations(rec, cfg, provider, areas, out#95;dir) list[SourceRecord]
+    }
+  }
+  namespace imaging.vision {
+    class Reading {
+      <<dataclass>>
+      +chart: str
+      +area: str
+      +label: str
+      +value: float
+      +unit: str
+      +as#95;printed: str
+      +samples#95;seen: int
+      +samples#95;total: int
+      +values#95;seen: list[float]
+      +tiles#95;seen: list[int]
+      +checks: list[str]
+      +agreement() float
+      +to#95;dict() dict
+    }
+    class ReadingRun {
+      <<dataclass>>
+      +image: str
+      +model: dict
+      +samples: int
+      +tiles: int
+      +readings: list[Reading]
+      +raw#95;outputs: list[str]
+      +errors: list[str]
+      +latency#95;s: float
+      +to#95;dict() dict
+    }
+    class m_imaging_vision["imaging.vision"] {
+      <<module>>
+      +READING#95;SCHEMA
+      +OBSERVATION#95;SCHEMA
+      +READ#95;PROMPT
+      +DESCRIBE#95;PROMPT
+      +image#95;bytes(path, max#95;side, box) bytes
+      +tiles(path, n, overlap) list[tuple[int, int, int, int]]
+      -#95;norm(s) str
+      +ensemble(samples, tile#95;of#95;sample, n#95;samples) list[Reading]
+      +sanity#95;checks(readings, pct#95;sum#95;tolerance) None
+      +read#95;infographic(path, provider, title, samples, n#95;tiles, temperature, max#95;side) ReadingRun
+      +describe#95;map(path, provider, title, measure, areas, max#95;side) dict
+    }
+  }
+  namespace app.services {
+    class Workspace
+  }
+  namespace drafting.models {
+    class m_drafting_models["drafting.models"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.config {
+    class m_ingestion_config["ingestion.config"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.models {
+    class SourceRecord
+  }
+  namespace ingestion.store {
+    class SourceStore
+  }
+  namespace llm.base {
+    class GenerationRequest
+    class LLMProvider
+    class Message
+  }
+  ReadingRun "1" *-- "*" Reading : readings
+  m_imaging_cli ..> Workspace
+  ConfirmationLog ..> ConfirmationEvent
+  m_imaging_pipeline ..> MapMeasurement
+  m_imaging_pipeline ..> RegionTemplate
+  m_imaging_pipeline ..> SourceRecord
+  m_imaging_pipeline ..> SourceStore
+  m_imaging_vision ..> GenerationRequest
+  m_imaging_vision ..> LLMProvider
+  m_imaging_vision ..> Message
+  m_imaging_cli ..> m_imaging_evaluate
+  m_imaging_confirm ..> m_drafting_models
+  m_imaging_pipeline ..> m_imaging_maps
+  m_imaging_pipeline ..> m_imaging_vision
+  m_imaging_pipeline ..> m_ingestion_config
+  style GenerationRequest fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style LLMProvider fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style Message fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SourceRecord fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SourceStore fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style Workspace fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_drafting_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_config fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3

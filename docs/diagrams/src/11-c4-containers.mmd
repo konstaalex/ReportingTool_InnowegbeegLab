@@ -1,0 +1,43 @@
+---
+config:
+  layout: elk
+title: "C4 level 2 · Containers"
+---
+flowchart TB
+  RES["<b>Researchers</b><br/>[Person]"]
+  TL["<b>Lab tech lead</b><br/>[Person]"]
+
+  subgraph SYS["InnoBeweegLab reporting tool  [Software system]"]
+    UI["<b>Review interface</b><br/>[Container: Python, Streamlit]<br/>7 tabs: data · images · draft · review ·<br/>export · report per model · experiments"]
+    CLI["<b>Command-line tools</b><br/>[Container: Python]<br/>ingestion.cli · imaging.cli · experiments.cli<br/>reports.cli · llm.cli · evaluation.cli"]
+    CORE["<b>Core library</b><br/>[Container: Python 3.11 packages]<br/>ingestion · imaging · evidence · drafting · llm<br/>verification · review · export · reports · experiments<br/>facade: app.services.Workspace"]
+    WS[("<b>Workspace</b><br/>[Container: JSON files on disk, git-ignored]<br/>ingest/ · evidence/ · drafts/ · reviews/ (hash-chained)<br/>images/ · runs/ · reports/ · exports/")]
+    CFG[("<b>Configuration and prompts</b><br/>[Container: TOML + text files in git]<br/>models · experiments · report structure ·<br/>survey mapping · images · writing and RIVM rules ·<br/>prompts v1, v2")]
+  end
+
+  DATA[("<b>Research data folder</b><br/>[External: files]")]
+  OLL["<b>Ollama</b><br/>[External: HTTP localhost:11434]<br/>qwen2.5:7b · qwen3:8b · llama3.1:8b ·<br/>vision models"]
+  HOST["<b>Hosted API</b><br/>[External: HTTPS, OpenAI-compatible]<br/>optional, E6"]
+  LO["<b>LibreOffice</b><br/>[External: optional]<br/>Word → PDF"]
+  ORIG[("<b>Original report PDF</b><br/>[External: confidential]")]
+
+  RES -- "uses (browser)" --> UI
+  TL -- "uses (terminal)" --> CLI
+  UI -- "calls" --> CORE
+  CLI -- "calls" --> CORE
+  CORE -- "reads and writes JSON" --> WS
+  CORE -- "reads" --> CFG
+  CORE -- "reads, checksums" --> DATA
+  CORE -- "chat; /api/ps for memory;<br/>embeddings planned (E3)" --> OLL
+  CORE -. "E6 only" .-> HOST
+  CORE -. "PDF export" .-> LO
+  CORE -- "evaluation only" --> ORIG
+
+  classDef person fill:#08427b,stroke:#052e56,color:#ffffff
+  classDef cont fill:#438dd5,stroke:#2e6295,color:#ffffff
+  classDef ext fill:#8c8c8c,stroke:#6b6b6b,color:#ffffff
+  classDef extopt fill:#b3b3b3,stroke:#6b6b6b,color:#1d2733,stroke-dasharray: 5 3
+  class RES,TL person
+  class UI,CLI,CORE,WS,CFG cont
+  class DATA,OLL,ORIG ext
+  class HOST,LO extopt

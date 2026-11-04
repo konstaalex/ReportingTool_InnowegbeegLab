@@ -1,0 +1,56 @@
+---
+config:
+  layout: elk
+title: "2 · Experiment design: from pilot to results (5 weeks)"
+---
+flowchart TB
+  P0["<b>Week 1 · pilot</b> (done)<br/>time, memory, cut-off fixes<br/>findings P1–P8"]
+  B2["<b>Week 2 · build</b><br/>E4 checker step · E1R raw records<br/>cap on ids per claim · evidence fingerprint<br/>Copilot import step"]
+  V1["<b>Week 2 · check V1 early</b><br/>E2 with seeds 43, 44 on GPU and CPU<br/>decides: quality runs on GPU or CPU"]
+  CAL["<b>Scorer check</b> (weeks 2–3)<br/>second rater labels 89 statements<br/>scorer trusted if κ ≥ 0.61"]
+  FZ{{"<b>Freeze · 13 Nov</b><br/>git tag freeze-1<br/>hypotheses and thresholds fixed"}}
+
+  subgraph LAB["Weeks 2–4 · quality comparison · Oss case · 3 seeds per condition · scored against the original"]
+    direction TB
+    S1["<b>Stage 1 · architecture</b> (qwen2.5:7b)<br/>E0 template · E1 single prompt · E1R raw records<br/>E2 staged · E4 staged + checker<br/>H1 evidence layer · H2 staging · H3 checker"]
+    S2["<b>Stage 2 · evidence selection</b><br/>all · top-25 salience · BM25 · vector · hybrid<br/>H4"]
+    S3["<b>Stage 3 · models</b><br/>qwen2.5:7b · qwen3:8b · llama3.1:8b<br/>H5"]
+    E7(["<b>E7 · final configuration</b>"])
+    RULE["<i>selection rule after each stage:</i><br/>the condition with the highest S whose U is within<br/>the minimum meaningful difference of the lowest U"]
+    S1 -- "winner" --> S2 -- "winner" --> S3 --> E7
+    RULE ~~~ S1
+  end
+
+  subgraph FEAS["Week 4 · feasibility and references"]
+    direction TB
+    CPU["<b>CPU-only runs</b><br/>1 per condition, 3 of E7<br/>F1 memory · F2 time · F3 reliability · V1"]
+    LAP["<b>Borrowed office laptop</b><br/>one run of E7 · F5"]
+    C0["<b>Copilot baseline C0</b><br/>3 new chats, by hand · H9"]
+    E6["<b>E6 hosted model</b><br/>only with Azure access"]
+  end
+
+  US["<b>Weeks 5–6 · user sessions</b><br/>4–5 researchers: blind ratings,<br/>planted errors with and without evidence<br/>H6–H8"]
+  RES(["<b>Results · 11 Dec</b>"])
+
+  P0 --> B2 --> FZ
+  P0 --> V1 --> FZ
+  FZ --> S1
+  CAL -. "decides how S is scored" .-> LAB
+  E7 --> FEAS
+  E7 --> US
+  FEAS --> RES
+  US --> RES
+  LAB --> RES
+
+  classDef done fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  classDef build fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef run fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  classDef opt fill:#f4f4f4,stroke:#8a8a8a,color:#1d2733,stroke-dasharray: 4 3
+  classDef key fill:#1f3a5f,stroke:#1f3a5f,color:#ffffff
+  class P0 done
+  class B2,V1,CAL build
+  class S1,S2,S3,CPU,LAP,C0,US run
+  classDef note fill:#ffffff,stroke:#c9d3df,color:#33475e,stroke-dasharray: 2 2
+  class RULE note
+  class E6 opt
+  class FZ,E7,RES key

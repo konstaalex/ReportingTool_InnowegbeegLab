@@ -1,0 +1,76 @@
+---
+config:
+  sequence:
+    wrap: false
+    width: 180
+    noteMargin: 8
+title: "Code · sequence: draft, review and export one case (UC2–UC4, UC6)"
+---
+sequenceDiagram
+  autonumber
+  actor R as Researcher
+  participant UI as ui.streamlit_app
+  participant WS as Workspace
+  participant PL as drafting.pipelines
+  participant VC as verification.checks
+  participant RS as review.session<br/>ReviewSession
+  participant EP as export.report
+  participant DX as export.content ·<br/>export.docx_report
+
+  Note over R,UI: tab 2 · Concept maken
+  R->>UI: section, pipeline, model
+  UI->>WS: generate(case, section, PipelineConfig, model_id, reviewer)
+  WS->>PL: run_pipeline(pack, cfg, provider)
+  PL-->>WS: SectionDraft
+  WS->>VC: verify_section(draft, pack, evidence_index)
+  VC-->>WS: verification stored on every claim
+  Note over WS: save_draft → drafts/<case>/<section>/<draft_id>.json<br/>an earlier review of this section is moved to reviews/<case>/archive
+  WS->>RS: ReviewSession.start(draft, reviewer)
+  RS-->>WS: session with event 1 = start
+  WS->>WS: save_session
+
+  Note over R,UI: tab 3 · Beoordelen (claim, its status and flags, its evidence and source cells)
+  UI->>WS: session(case, section)
+  WS->>RS: load(path) · attach_index(evidence_index)
+  RS-->>UI: states(): ClaimState per claim (rebuilt from the events)
+  alt approve
+    R->>UI: approve claim
+    UI->>RS: approve(claim_id, actor)
+    alt verifier status is weak or unsupported
+      RS-->>UI: NeedsOverride
+      R->>UI: confirm the override
+      UI->>RS: approve(claim_id, actor, confirm_override=True)
+      Note over RS: event override_approve (status kept on the event)
+    else grounded
+      Note over RS: event approve
+    end
+  else edit
+    R->>UI: new text (and evidence ids)
+    UI->>RS: edit(claim_id, new_text, actor, evidence_ids)
+    RS->>VC: verify_claim(edited text, its evidence)
+    VC-->>RS: recheck result
+    Note over RS: event edit: before, after, recheck (AI text kept)
+  else reject, comment, reopen, add_claim
+    UI->>RS: reject / comment / reopen / add_claim
+  end
+  Note over RS: every event: seq, ts, actor, prev_hash, hash (SHA-256 chain)
+  UI->>WS: save_session(session)
+
+  Note over R,UI: tab 4 · Exporteren
+  UI->>WS: export_blockers(case)
+  WS->>EP: blocking_reasons(report_inputs)
+  Note over EP: a required section without a draft · claims still pending ·<br/>verify_chain() finds an altered log
+  EP-->>UI: reasons (empty = ready)
+  R->>UI: export (final, or preview with CONCEPT banner)
+  UI->>WS: export(case, preview)
+  WS->>EP: export_case(report_inputs, exports/<case>, preview)
+  alt reasons and not preview
+    EP-->>WS: ExportBlocked(reasons)
+  else ready, or preview
+    Note over EP: render_markdown: approved and edited claims with<br/>evidence ids · Methode · Bronnenlijst · Bijlage · evidence_map_csv
+    EP-->>WS: .md and evidence_map_<case>.csv
+    WS->>DX: from_sessions(ws, case, preview) → render_docx
+    Note over DX: WijkscanRenderer.build: cover, chapters, maps,<br/>charts from survey data, Bijlagen
+    DX-->>WS: .docx (and .pdf via LibreOffice if asked)
+  end
+  WS-->>UI: file paths to download

@@ -1,0 +1,28 @@
+---
+config:
+  layout: elk
+title: "E4 · staged + checker step (to build; design decision still open)"
+---
+flowchart TB
+  S["<b>Staged drafting</b> (as E2)<br/>claims with evidence ids"]
+  LOOP["for every claim"]
+  CH["<b>Checker call</b> (model)<br/>prompt: the claim + only its cited evidence<br/>question: does the evidence support every part?<br/>answer: supported / partly / not, with reason"]
+  D{"supported?"}
+  KEEP["keep the claim"]
+  subgraph OPT["Decision 2 before the freeze: what happens to a rejected claim"]
+    direction LR
+    O1["<b>Option 1 · flag only</b><br/>claim kept, checker verdict stored<br/>→ U cannot change; H3 would need<br/>another measure"]
+    O2["<b>Option 2 · one revision</b><br/>model rewrites once with the checker's reason;<br/>original kept in the stage log; never silent<br/>→ U can change (H3 as written)"]
+  end
+  V["<b>Deterministic verifier</b> (same as all conditions)<br/>grounded / weak / unsupported"]
+  OUT["SectionDraft + StageLogs<br/>extra calls and time are reported"]
+
+  S --> LOOP --> CH --> D
+  D -- "yes" --> KEEP --> V
+  D -- "no" --> OPT --> V
+  V --> OUT
+
+  classDef tobuild fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef built fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  class S,V built
+  class CH,LOOP,KEEP,O1,O2,OUT tobuild

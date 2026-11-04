@@ -1,0 +1,45 @@
+---
+config:
+  layout: elk
+title: "Deployment · where everything runs"
+---
+flowchart TB
+  subgraph MAC["Developer laptop · MacBook Pro, Apple M1 Pro, 16 GB, macOS"]
+    direction TB
+    PY["<b>Python 3.11 venv</b><br/>reporting tool: UI, CLIs, core library"]
+    OL["<b>Ollama app</b><br/>localhost:11434 · GPU (Metal) by default,<br/>CPU only with num_gpu 0 (--cpu-only)"]
+    DAT[("<b>Research data</b><br/>Perspectieven Oss, Buurtscan set<br/>(confidential; never in git)")]
+    WSP[("<b>workspace/</b><br/>derived data, runs, reports<br/>(git-ignored)")]
+    REPO[("<b>git working copy</b><br/>code, config, prompts, docs")]
+    PY -- "HTTP" --> OL
+    PY --> DAT
+    PY --> WSP
+  end
+
+  subgraph TGT["Target · corporate office laptop (planned, F5) · 16 GB, no usable GPU"]
+    direction TB
+    PY2["<b>Python venv</b><br/>reporting tool"]
+    OL2["<b>Ollama</b><br/>CPU only"]
+    PY2 -- "HTTP" --> OL2
+  end
+
+  subgraph GH["GitHub"]
+    GR[("repository<br/>code and documentation only")]
+  end
+
+  subgraph M365["InnoBeweegLab Microsoft 365 tenant"]
+    direction TB
+    COP["<b>Microsoft 365 Copilot</b><br/>baseline C0, used by hand<br/>(work account)"]
+    AZ["<b>Azure OpenAI, EU region</b><br/>E6, only if access is given"]
+  end
+
+  REPO -- "push / pull" --> GR
+  GR -. "clone for the F5 run" .-> PY2
+  PY -. "E6 only, HTTPS" .-> AZ
+
+  classDef node fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  classDef store fill:#f6f8fb,stroke:#55657a,color:#1d2733
+  classDef opt fill:#f4f4f4,stroke:#8a8a8a,color:#1d2733,stroke-dasharray: 5 3
+  class PY,OL node
+  class DAT,WSP,REPO,GR store
+  class PY2,OL2,COP,AZ opt

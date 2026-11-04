@@ -1,0 +1,87 @@
+---
+config:
+  layout: elk
+title: "Code · object diagram: one approved claim traced back to a spreadsheet cell (illustrative, synthetic values)"
+---
+classDiagram
+  direction TB
+  class EXP["evidence_map row : export.report.evidence_map_rows"] {
+    section = Sporten
+    claim_id = SP-03
+    status = approved · override = False
+    verification = grounded
+    evidence_id = B-SP-02
+    source_files = bewoners/enquete.xlsx
+    locators = rij 14, D14:H14, alle respondenten, V07
+  }
+  class CS["SP-03 : review.session.ClaimState"] {
+    original_text = model text, kept
+    text = 'In de enquête kiest 30%, 12 van de 40, …'
+    status = approved
+    verification = grounded, flags = []
+    evidence_ids = [B-SP-02]
+  }
+  class EV7["event 7 : review.session.ReviewEvent"] {
+    action = approve
+    actor = researcher name
+    verification_status = grounded
+    prev_hash = 4b1e…
+    hash = sha256 of this event + prev_hash
+  }
+  class DC["SP-03 : drafting.models.DraftClaim"] {
+    claim_type = bevinding
+    evidence_ids = [B-SP-02]
+    origin = model · stage = synthesis
+    verification = verify_claim result
+  }
+  class SD["draft 20261104-… : drafting.models.SectionDraft"] {
+    section = Sporten · pipeline_id = staged
+    model = qwen2.5:7b, local
+    evidence_ids_available = 103 ids
+  }
+  class SL["synthesis : drafting.models.StageLog"] {
+    prompt_version = v2 · prompt_sha = 9d2c…
+    evidence_sent = [B-SP-02, X-SP-01, …]
+    privacy = local, nothing left the device
+    timings = load, prompt_eval, eval seconds
+  }
+  class EV["B-SP-02 : evidence.models.Evidence"] {
+    perspective = bewoners · kind = option_share
+    statement = 'In groep … kiest 30%, 12 van de 40 respondenten, …'
+    data = k 12, n 40, pct 30, computed in code
+    method = deterministic · salience = 0.8
+    source_record_ids = [3f9a1c2b7d10]
+  }
+  class EP["Sporten : evidence.models.EvidencePack"] {
+    built_with = config fingerprints, builder version
+  }
+  class SR["3f9a1c2b7d10 : ingestion.models.SourceRecord"] {
+    perspective = bewoners
+    source_file = bewoners/enquete.xlsx
+    sheet = Resultaten vragenlijst
+    locator = rij 14, D14:H14, alle respondenten, V07
+    extra.counts = option → count, as in the cells
+    id = first 12 hex of sha1 over perspective, file, sheet, locator
+  }
+  class DOC["bewoners/enquete.xlsx : ingestion.sources.SourceDocument"] {
+    checksum = sha256 of the file
+    status = parsed · records = 412
+    case_id = example-case
+  }
+  class RUN["run.json : reports.runs record"] {
+    run_id = 20261104-…-staged-s42
+    code_version = git commit, -dirty if changed
+    fingerprints = prompts, config, experiments.toml
+  }
+
+  EXP ..> CS : one row per claim and evidence id
+  CS ..> EV7 : status rebuilt from the events
+  CS ..> DC : started from (claim_id)
+  SD *-- DC : claims
+  SD *-- SL : stages
+  DC --> EV : evidence_ids
+  EP *-- EV : items
+  EV --> SR : source_record_ids
+  SR ..> DOC : source_file + checksum
+  RUN ..> SD : drafts/Sporten.json
+  note for EXP "Read from the top down: every sentence in the exported report leads to the cell it rests on.<br/>All values on this page are made up to show the formats (no project data)."

@@ -1,0 +1,92 @@
+---
+config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: BRANDES_KOEPF
+title: "Code · packages and their imports (UML package diagram, all 13 packages of src/)"
+---
+flowchart TB
+  subgraph ENTRY["Entry points (run by a person)"]
+    direction LR
+    UI["<b>ui.streamlit_app</b><br/>7 tabs"]
+    ICLI["<b>ingestion.cli</b><br/>ingest, notes"]
+    IMCLI["<b>imaging.cli</b><br/>analyse, score"]
+    LCLI["<b>llm.cli</b><br/>check, smoke"]
+    RCLI["<b>reports.cli</b><br/>generate, list, evaluate, compare"]
+    XCLI["<b>experiments.cli</b><br/>run, summary"]
+    ECLI["<b>evaluation.cli</b><br/>gold-set harness"]
+  end
+
+  APP["<b>app</b><br/>services · Workspace: one facade over every use case"]
+
+  subgraph ORCH["Orchestration"]
+    direction LR
+    EXP["<b>experiments</b><br/>runner · provenance"]
+    REP["<b>reports</b><br/>runs · evaluate · judge"]
+  end
+
+  subgraph DOM["Use-case logic"]
+    direction LR
+    DRA["<b>drafting</b><br/>pipelines · prompts · models"]
+    VER["<b>verification</b><br/>checks"]
+    REV["<b>review</b><br/>session"]
+    EXPT["<b>export</b><br/>report · content · docx_report · charts"]
+    IMG["<b>imaging</b><br/>maps · vision · pipeline · confirm · evaluate"]
+  end
+
+  subgraph FOUND["Foundation"]
+    direction LR
+    EVI["<b>evidence</b><br/>builder · models"]
+    LLM["<b>llm</b><br/>base · providers · registry · privacy · resources"]
+    ING["<b>ingestion</b><br/>wijkscan · buurtscan · sources · store · models<br/>· theme_tagger · perspective_detector · 9 parsers"]
+    CFG["<b>ingestion.config</b><br/>TOML loader for config/, used by 8 other packages<br/>(edges not drawn)"]
+  end
+
+  EVAL["<b>evaluation</b><br/>standalone harness on a synthetic gold set<br/>gold_set · metrics · runner · results_log · models"]
+
+  UI --> APP
+  UI --> DRA
+  UI --> REV
+  UI -.-> EXP
+  ICLI -.-> APP
+  IMCLI --> APP
+  RCLI --> APP
+  RCLI -.-> LLM
+  XCLI --> APP
+  LCLI ~~~ LLM
+  ECLI ~~~ EVAL
+
+  APP --> DRA & EVI & EXPT & ING & LLM & REV & VER
+  APP -.-> IMG & REP
+
+  EXP --> APP
+  EXP --> DRA & EVI & LLM & VER
+  EXP -.-> REP
+  REP --> DRA & EVI & ING & LLM & REV & VER
+  REP -.-> EXP
+  REP -.-> EXPT
+
+  DRA --> EVI & LLM
+  VER --> DRA & EVI & ING
+  REV --> DRA
+  REV -.-> VER
+  EXPT --> EVI & ING & REV
+  IMG --> DRA & ING & LLM
+
+  EVI --> ING
+
+  NOTE["solid arrow: imported at module level · dashed: imported inside a function (lazy)<br/>the cycles app → reports → experiments → app run only through lazy imports<br/>drafting, llm and experiments import ingestion only for ingestion.config, so no edge is drawn<br/>reports.runs uses llm.cli._is_pulled (a CLI helper inside library code)<br/>each *.cli also imports modules of its own package (not drawn)"]
+
+  classDef entry fill:#f4f4f4,stroke:#8a8a8a,color:#1d2733
+  classDef facade fill:#1f3a5f,stroke:#1f3a5f,color:#ffffff
+  classDef orch fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef dom fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  classDef found fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  classDef note fill:#fff8e6,stroke:#d4a017,color:#1d2733
+  class UI,ICLI,IMCLI,LCLI,RCLI,XCLI,ECLI entry
+  class APP facade
+  class EXP,REP orch
+  class DRA,VER,REV,EXPT,IMG dom
+  class EVI,LLM,ING,CFG found
+  class EVAL entry
+  class NOTE note

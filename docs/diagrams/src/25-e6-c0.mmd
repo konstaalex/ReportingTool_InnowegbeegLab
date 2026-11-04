@@ -1,0 +1,34 @@
+---
+config:
+  layout: elk
+title: "E6 hosted model and C0 Copilot baseline · the two cloud references"
+---
+flowchart TB
+  subgraph E6["E6 · same pipeline, hosted model (only with Azure access)"]
+    direction TB
+    P6["best pipeline from stages 1–2"]
+    REG["llm.registry · model id → provider<br/>(config/models.toml, location = hosted)"]
+    PG["<b>privacy guard</b> (llm.privacy)<br/>resident free text blocked unless the experiment<br/>sets an explicit, logged override; then pseudonymised"]
+    AZ["OpenAICompatibleProvider<br/>→ Azure OpenAI, EU region"]
+    P6 --> REG --> PG --> AZ
+  end
+  subgraph C0["C0 · Microsoft 365 Copilot, as researchers could use it today"]
+    direction TB
+    R["researcher, InnoBeweegLab work account"]
+    IN["the same Oss source files<br/>never the original report, never the tool's evidence"]
+    PR["one fixed Dutch prompt<br/>(prompts/copilot_c0_v1.txt): same chapters,<br/>name file, sheet and cell for every fact"]
+    CH["3 new chats · date, model shown, minutes of effort recorded"]
+    IMP["import step (to build): text per chapter → a scorable run"]
+    R --> IN --> PR --> CH --> IMP
+  end
+  SC["<b>Scoring</b><br/>E6: same as every condition<br/>C0: evaluation against the original + manual source<br/>check on 30 statements (no evidence ids) → H9"]
+  AZ --> SC
+  IMP --> SC
+
+  classDef built fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  classDef tobuild fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef cond fill:#f4f4f4,stroke:#8a8a8a,color:#1d2733,stroke-dasharray: 4 3
+  class REG,PG built
+  class P6,AZ cond
+  class R,IN,PR,CH cond
+  class IMP tobuild

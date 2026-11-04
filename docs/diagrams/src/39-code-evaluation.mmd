@@ -1,0 +1,101 @@
+---
+config:
+  layout: elk
+title: "Code · evaluation: gold-set harness (standalone, synthetic)"
+---
+classDiagram
+  direction LR
+  namespace evaluation.cli {
+    class m_evaluation_cli["evaluation.cli"] {
+      <<module>>
+      -#95;perfect#95;condition(gold#95;set) Draft
+      -#95;noisy#95;condition(gold#95;set) Draft
+      -#95;print#95;summary(summary) None
+      +main(argv) int
+    }
+  }
+  namespace evaluation.gold_set {
+    class m_evaluation_gold_set["evaluation.gold_set"] {
+      <<module>>
+      +GOLD#95;SET
+      +load#95;gold#95;set(path) tuple[GoldClaim, ...]
+    }
+  }
+  namespace evaluation.metrics {
+    class m_evaluation_metrics["evaluation.metrics"] {
+      <<module>>
+      -#95;gold#95;by#95;id(gold#95;set) dict[str, GoldClaim]
+      -#95;matched#95;claims(draft, gold#95;set) list[tuple[Claim, GoldClaim]]
+      +citation#95;precision(draft, gold#95;set) float
+      +citation#95;recall(draft, gold#95;set) float
+      +fabrication#95;rate(draft, gold#95;set) float
+      +misgrounding#95;rate(draft, gold#95;set) float
+      +faithfulness(draft, gold#95;set) float
+      +injected#95;error#95;catch#95;rate(draft, gold#95;set) float
+      +score#95;draft(draft, gold#95;set) dict[str, float]
+    }
+  }
+  namespace evaluation.models {
+    class GoldClaim {
+      <<dataclass>>
+      +id: str
+      +text: str
+      +supporting#95;ids: tuple[str, ...]
+      +theme: str | None
+      +#95;#95;post#95;init#95;#95;() None
+    }
+    class Claim {
+      <<dataclass>>
+      +text: str
+      +cited#95;ids: tuple[str, ...]
+      +gold#95;id: str | None
+      +injected#95;error: bool
+    }
+    class Draft {
+      <<dataclass>>
+      +condition: str
+      +claims: list[Claim]
+      +#95;#95;len#95;#95;() int
+    }
+    class RunResult {
+      <<dataclass>>
+      +condition: str
+      +repeat#95;index: int
+      +scores: dict[str, float]
+      +n#95;claims: int
+      +n#95;gold: int
+    }
+  }
+  namespace evaluation.results_log {
+    class m_evaluation_results_log["evaluation.results_log"] {
+      <<module>>
+      +METRIC#95;NAMES
+      +summarize(results) dict[str, dict[str, dict[str, float]]]
+      +append#95;run#95;log(path, results, label) None
+      +load#95;run#95;log(path) list[dict]
+    }
+  }
+  namespace evaluation.runner {
+    class m_evaluation_runner["evaluation.runner"] {
+      <<module>>
+      +run#95;condition(name, condition#95;fn, gold#95;set, repeats) list[RunResult]
+      +run#95;conditions(conditions, gold#95;set, repeats) list[RunResult]
+    }
+  }
+  Draft "1" *-- "*" Claim : claims
+  m_evaluation_cli ..> Claim
+  m_evaluation_cli ..> Draft
+  m_evaluation_cli ..> GoldClaim
+  m_evaluation_gold_set ..> GoldClaim
+  m_evaluation_metrics ..> Claim
+  m_evaluation_metrics ..> Draft
+  m_evaluation_metrics ..> GoldClaim
+  m_evaluation_results_log ..> RunResult
+  m_evaluation_runner ..> GoldClaim
+  m_evaluation_runner ..> RunResult
+  m_evaluation_cli ..> m_evaluation_gold_set
+  m_evaluation_cli ..> m_evaluation_results_log
+  m_evaluation_cli ..> m_evaluation_runner
+  m_evaluation_metrics ..> m_evaluation_gold_set
+  m_evaluation_runner ..> m_evaluation_gold_set
+  m_evaluation_runner ..> m_evaluation_metrics

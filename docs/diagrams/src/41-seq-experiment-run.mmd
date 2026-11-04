@@ -1,0 +1,67 @@
+---
+config:
+  sequence:
+    wrap: false
+    width: 180
+    noteMargin: 8
+title: "Code · sequence: one experiment run, unit = report (UC9, SQ3, SQ4)"
+---
+sequenceDiagram
+  autonumber
+  actor R as Researcher
+  participant CLI as experiments.cli
+  participant RU as experiments.runner
+  participant RR as reports.runs
+  participant LLM as llm.registry ·<br/>llm.resources
+  participant WS as Workspace
+  participant PL as drafting.pipelines
+  participant VC as verification.checks
+  participant EX as export.content ·<br/>export.docx_report
+  participant EV as reports.evaluate
+
+  R->>CLI: run E2 --cold --tag pilot-week1 [--cpu-only]
+  CLI->>RU: run_experiment(ws, "E2", cpu_only, cold, tag)
+  Note over RU: experiment_definition("E2")<br/>config/experiments.toml: pipeline, prompt version,<br/>model, seeds, cases, unit = report
+  RU->>RU: _run_reports(...)
+  Note over RU: _base_record: git_commit(), fingerprints(prompt_version)<br/>of prompts, config and experiments.toml
+  loop every case (euterpepark-oss)
+    RU->>EV: _reference(ws, case_id)
+    EV-->>RU: original report, read locally (load_reference)
+    loop every seed
+      RU->>RR: generate_report_run(ws, case, model, pipeline, seed, cpu_only, cold, tag)
+      RR->>LLM: validate_model_config · get_provider
+      RR->>RR: preflight: Ollama running? model pulled? (llm.cli._is_pulled)
+      opt cpu_only
+        Note over RR: provider.num_gpu = 0, timeout at least 1800 s
+      end
+      opt cold
+        RR->>LLM: unload_ollama_models (keep_alive 0)
+      end
+      RR->>WS: evidence(case_id)
+      WS-->>RR: EvidencePacks (diagram 40)
+      RR->>LLM: MemoryMonitor.__enter__ (thread: /api/ps and process RSS)
+      loop every report section
+        RR->>PL: run_pipeline(pack, PipelineConfig, provider)
+        Note over PL: template, naive, staged or single call<br/>(staged: diagram 22)
+        PL-->>RR: SectionDraft (claims, StageLogs with timings)
+        RR->>VC: verify_section(draft, pack, index)
+        VC-->>RR: status per claim, section metrics
+        Note over RR: drafts/<section>.json · per-section wall time,<br/>tokens, model calls, timings
+      end
+      RR->>LLM: MemoryMonitor.__exit__ · summary()
+      LLM-->>RR: model_peak_mb, limit_mb (0.6 × 16 GB), within_limit
+      Note over RR: run record: code_version, fingerprints, machine,<br/>runtime (cpu_only, cold, num_ctx, Ollama version), totals
+      RR->>EX: from_drafts → render_docx
+      EX-->>RR: .docx in the house layout + figure list
+      RR-->>RU: run.json (run_id = time-model-pipeline-seed[-cpu])
+      RU->>EV: evaluate_run(ws, case, run_id, reference)
+      Note over EV: generated_sections · evidence_statements · Matcher<br/>coverage, ceiling, numbers agree, additions, figures
+      EV-->>RU: summary · evaluation.json, alignment.csv,<br/>evaluation.md in <run>/evaluation
+      Note over RU: _eval_metrics → one result row
+    end
+  end
+  Note over RU: summarise_reports (mean, sd, min, max over seeds) · _save →<br/>workspace/runs/<experiment run id>.json
+  RU-->>CLI: record
+  R->>CLI: summary --tag pilot-week1
+  CLI->>RU: summarise_runs(ws, tag)
+  RU-->>CLI: one row per experiment run: minutes per report, model GB,<br/>within limit, unsupported, grounded, coverage of supportable, ceiling

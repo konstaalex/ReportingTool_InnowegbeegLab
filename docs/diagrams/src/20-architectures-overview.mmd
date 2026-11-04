@@ -1,0 +1,66 @@
+---
+config:
+  layout: elk
+  elk:
+    considerModelOrder: NODES_AND_EDGES
+    forceNodeModelOrder: true
+title: "Architectures under study · every condition, side by side (all scored the same way)"
+---
+flowchart LR
+  SRC[("<b>Source records</b><br/>every row, cell group, map<br/>with file · sheet · locator")]
+  EV[("<b>Evidence packs</b> per section<br/>computed in code; ids like B-SP-03")]
+  SRC -- "evidence builder" --> EV
+
+  subgraph E0G["E0 · template · built"]
+    E0["template: top-salience evidence<br/>written as fixed sentences · 0 model calls"]
+  end
+  subgraph E1G["E1 · single prompt (A) · built"]
+    E1["1 call per section with<br/>all evidence of the theme"]
+  end
+  subgraph E1RG["E1R · single prompt on raw records · to build"]
+    E1R["1 call per section with raw rows and cells<br/>as text; the model has to count itself"]
+  end
+  subgraph E2G["E2 · staged (B) · built"]
+    E2["findings per perspective: data · expert · bewoners<br/>(3 calls) → synthesis (1 call)"]
+  end
+  subgraph E3G["E3 · staged with evidence selection · top-25 built; BM25, vector, hybrid to build"]
+    E3S["select evidence: top-25 salience ·<br/>BM25 · vector · hybrid"] --> E3["staged drafting (as E2)"]
+  end
+  subgraph E4G["E4 · staged + checker · to build"]
+    E4A["staged drafting (as E2)"] --> E4B["checker call per claim against its<br/>cited evidence → flag, or one revision<br/>(original kept) · decision open"]
+  end
+  subgraph E5G["E5 · free multi-agent · not built"]
+    E5["agents talking freely: ruled out<br/>by the brief; E2 and E4 are the<br/>bounded role-separated form"]
+  end
+  subgraph E6G["E6 · hosted model · only with Azure access"]
+    E6["best pipeline, model behind an<br/>OpenAI-compatible EU endpoint;<br/>privacy guard on resident text"]
+  end
+  subgraph C0G["C0 · Microsoft 365 Copilot · by hand"]
+    C0["source files + one fixed prompt,<br/>3 new chats; text imported per chapter"]
+  end
+
+  EV --> E0
+  EV --> E1
+  SRC --> E1R
+  EV --> E2
+  EV --> E3S
+  EV --> E4A
+  EV --> E6
+  SRC -. "the files themselves" .-> C0
+
+  SCORE["<b>Same scoring for every condition</b><br/>verifier per claim → U (unsupported rate)<br/>evaluation vs the original report → S, ceiling,<br/>numbers found back, number conflicts<br/>+ time, tokens, peak memory"]
+  E0 & E1 & E1R & E2 & E3 & E4B & E6 --> SCORE
+  C0 -- "no evidence ids: manual source check<br/>on 30 statements" --> SCORE
+
+  classDef built fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  classDef tobuild fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef cond fill:#f4f4f4,stroke:#8a8a8a,color:#1d2733,stroke-dasharray: 4 3
+  classDef no fill:#fbeaea,stroke:#a33,color:#5a1d1d,stroke-dasharray: 4 3
+  classDef data fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  classDef key fill:#1f3a5f,stroke:#1f3a5f,color:#ffffff
+  class E0,E1,E2,E3 built
+  class E1R,E3S,E4A,E4B tobuild
+  class E6,C0 cond
+  class E5 no
+  class SRC,EV data
+  class SCORE key

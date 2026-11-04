@@ -1,0 +1,326 @@
+---
+config:
+  layout: elk
+title: "Code · ingestion: files → source records (all modules)"
+---
+classDiagram
+  direction LR
+  namespace ingestion.buurtscan {
+    class IngestionResult {
+      <<dataclass>>
+      +root: str
+      +store: SourceStore
+      +documents: list[SourceDocument]
+      +validation: dict[str, list[str]]
+      +survey#95;meta: dict[str, dict]
+      +cases: dict[str, dict]
+      +summary() dict
+      +save(out#95;dir) Path
+    }
+    class m_ingestion_buurtscan["ingestion.buurtscan"] {
+      <<module>>
+      +RIVM#95;PDF#95;HINT
+      +REFERENCE#95;DOC#95;HINTS
+      -#95;match#95;question(question#95;key, item, mapping) Optional[dict]
+      +option#95;theme(option, mapping) Optional[str]
+      +apply#95;survey#95;mapping(records, mapping) None
+      +apply#95;demografie#95;mapping(records, mapping) None
+      +ingest#95;buurtscan#95;folder(root, cases, verbose) IngestionResult
+      -#95;neighbourhood#95;for(case#95;label, result, case#95;id) Optional[str]
+    }
+  }
+  namespace ingestion.cli {
+    class m_ingestion_cli["ingestion.cli"] {
+      <<module>>
+      +SKIP#95;SUFFIXES
+      +UNSUPPORTED#95;BUT#95;KNOWN
+      -#95;iter#95;files(root)
+      +ingest#95;folder(root) tuple[SourceStore, list[dict]]
+      +main(argv) int
+    }
+  }
+  namespace ingestion.config {
+    class m_ingestion_config["ingestion.config"] {
+      <<module>>
+      +REPO#95;ROOT
+      +config#95;dir() Path
+      -#95;load(path) dict
+      +load#95;config(relative) dict
+      +config#95;fingerprint(relative) str
+    }
+  }
+  namespace ingestion.models {
+    class SourceRecord {
+      <<dataclass>>
+      +id: str
+      +perspective: str
+      +source#95;file: str
+      +sheet: Optional[str]
+      +locator: str
+      +theme: Optional[str]
+      +subtheme: Optional[str]
+      +neighbourhood: Optional[str]
+      +text: Optional[str]
+      +value: Optional[float]
+      +extra: dict
+      +needs#95;manual#95;mapping: bool
+      +case#95;id: Optional[str]
+      +#95;#95;post#95;init#95;#95;() None
+      +make#95;id(perspective, source#95;file, sheet, locator)$ str
+      +to#95;dict() dict
+      +from#95;dict(data)$ 'SourceRecord'
+    }
+    class m_ingestion_models["ingestion.models"] {
+      <<module>>
+      +THEMES
+      +PERSPECTIVES
+    }
+  }
+  namespace ingestion.parsers.buurtscan_expert_parser {
+    class m_ingestion_parsers_buurtscan_expert_parser["ingestion.parsers.buurtscan_expert_parser"] {
+      <<module>>
+      +SHEET
+      +HEADER#95;FIRST#95;CELL
+      +SCALE
+      +detect(sheet#95;names, path) bool
+      -#95;find#95;header(rows) Optional[int]
+      +parse#95;file(path, source#95;file#95;label, case#95;id) list[SourceRecord]
+    }
+  }
+  namespace ingestion.parsers.buurtscan_survey_parser {
+    class QuestionBlock {
+      <<dataclass>>
+      +block#95;id: str
+      +question: str
+      +question#95;key: str
+      +item: Optional[str]
+      +first#95;col: int
+      +last#95;col: int
+      +options: list[Optional[str]]
+      +open#95;cols: list[int]
+      +kind: str
+      +col#95;range() str
+      +to#95;dict() dict
+    }
+    class m_ingestion_parsers_buurtscan_survey_parser["ingestion.parsers.buurtscan_survey_parser"] {
+      <<module>>
+      +OPEN#95;LABELS
+      +FOOTER#95;PREFIX
+      -#95;RATING#95;LABEL
+      -#95;N#95;RE
+      +rating#95;value(option) Optional[int]
+      +detect(sheet#95;names, path) bool
+      -#95;norm#95;question(text, neighbourhood) str
+      -#95;common#95;item(options) Optional[str]
+      +build#95;blocks(ws, neighbourhood, question#95;row, option#95;row, first#95;col, max#95;col) list[QuestionBlock]
+      -#95;respondent#95;rows(ws) tuple[list[int], Optional[int], Optional[int]]
+      +parse#95;file(path, source#95;file#95;label, case#95;id, neighbourhood) tuple[list[SourceRecord], dict]
+      +validate#95;against#95;footer(records, meta) list[str]
+    }
+  }
+  namespace ingestion.parsers.demografie_parser {
+    class m_ingestion_parsers_demografie_parser["ingestion.parsers.demografie_parser"] {
+      <<module>>
+      -#95;INHABITANTS#95;RE
+      -#95;AREA#95;RE
+      +parse#95;dutch#95;number(text) Optional[float]
+      +detect(path) bool
+      +parse#95;file(path, source#95;file#95;label, case#95;id) list[SourceRecord]
+    }
+  }
+  namespace ingestion.parsers.expert_parser {
+    class m_ingestion_parsers_expert_parser["ingestion.parsers.expert_parser"] {
+      <<module>>
+      +SCORE#95;PER#95;INDICATOR#95;SHEET
+      +TOTAAL#95;SHEET
+      +OPMERKINGEN#95;SHEET
+      +detect(sheet#95;names) bool
+      -#95;forward#95;fill(values)
+      -#95;load#95;indicator#95;blocks(path) list[dict]
+      -#95;load#95;indicator#95;lookup(path) dict[int, tuple[Optional[str], Optional[str]]]
+      -#95;sections(rows, vraag#95;col) list[tuple[int, str]]
+      +parse#95;score#95;sheet(path, sheet#95;name, neighbourhood, source#95;file#95;label, case#95;id) list[SourceRecord]
+      +parse#95;section#95;remarks(path, sheet#95;name, neighbourhood, source#95;file#95;label, case#95;id) list[SourceRecord]
+      +parse#95;totaal#95;scores(path, source#95;file#95;label) list[SourceRecord]
+      +parse#95;opmerkingen(path, source#95;file#95;label) list[SourceRecord]
+      +parse#95;file(path, neighbourhood, source#95;file#95;label) list[SourceRecord]
+    }
+  }
+  namespace ingestion.parsers.map_parser {
+    class m_ingestion_parsers_map_parser["ingestion.parsers.map_parser"] {
+      <<module>>
+      +IMAGE#95;SUFFIXES
+      +detect(filename) bool
+      +parse#95;file(path, source#95;file#95;label) list[SourceRecord]
+    }
+  }
+  namespace ingestion.parsers.notes_parser {
+    class m_ingestion_parsers_notes_parser["ingestion.parsers.notes_parser"] {
+      <<module>>
+      +SHEET
+      +COLUMNS
+      +GENERAL
+      +NOTE#95;TYPES
+      +EXPLANATION
+      +write#95;template(path, overwrite) Path
+      +is#95;notes#95;workbook(path) bool
+      -#95;note#95;type(value) Optional[tuple[str, dict]]
+      -#95;fmt#95;date(v) Optional[str]
+      +parse#95;notes(path, rel, case#95;id) tuple[list[SourceRecord], list[str]]
+    }
+  }
+  namespace ingestion.parsers.reference_parser {
+    class m_ingestion_parsers_reference_parser["ingestion.parsers.reference_parser"] {
+      <<module>>
+      +load#95;rivm#95;rules(pdf#95;checksum) list[SourceRecord]
+    }
+  }
+  namespace ingestion.parsers.resident_parser {
+    class m_ingestion_parsers_resident_parser["ingestion.parsers.resident_parser"] {
+      <<module>>
+      +CATEGORIZED#95;SHEET#95;NAMES
+      +SURVEY#95;SHEET#95;NAME
+      +detect(sheet#95;names) bool
+      +parse#95;categorized#95;sheet(path, sheet#95;name, source#95;file#95;label) list[SourceRecord]
+      +parse#95;survey#95;sheet(path, source#95;file#95;label, sheet#95;name) list[SourceRecord]
+      +parse#95;file(path, source#95;file#95;label) list[SourceRecord]
+    }
+  }
+  namespace ingestion.parsers.survey_tally_parser {
+    class m_ingestion_parsers_survey_tally_parser["ingestion.parsers.survey_tally_parser"] {
+      <<module>>
+      +SHEET
+      +detect(sheet#95;names) bool
+      -#95;group#95;rows(ws) list[tuple[int, str]]
+      +parse#95;file(path, source#95;file#95;label, case#95;id, neighbourhood) tuple[list[SourceRecord], dict]
+    }
+  }
+  namespace ingestion.perspective_detector {
+    class m_ingestion_perspective_detector["ingestion.perspective_detector"] {
+      <<module>>
+      -#95;FOLDER#95;HINTS
+      +detect#95;perspective#95;from#95;path(file#95;path) Optional[str]
+    }
+  }
+  namespace ingestion.sources {
+    class SourceDocument {
+      <<dataclass>>
+      +source#95;id: str
+      +filename: str
+      +source#95;type: str
+      +perspective: Optional[str]
+      +checksum: str
+      +case#95;id: Optional[str]
+      +case#95;label: Optional[str]
+      +synthetic: bool
+      +status: str
+      +duplicate#95;of: Optional[str]
+      +note: Optional[str]
+      +records: int
+      +metadata: dict
+      +to#95;dict() dict
+    }
+    class m_ingestion_sources["ingestion.sources"] {
+      <<module>>
+      +FILENAME#95;KINDS
+      -#95;CASE#95;RE
+      +sha256#95;file(path) str
+      +slugify(text) str
+      +classify#95;filename(filename) tuple[Optional[str], Optional[str], Optional[str], Optional[str], bool]
+    }
+  }
+  namespace ingestion.store {
+    class SourceStore {
+      +#95;#95;init#95;#95;() None
+      +add(record) None
+      +add#95;many(records) None
+      +remove#95;where(predicate) int
+      +#95;#95;len#95;#95;() int
+      +all() list[SourceRecord]
+      +get(record#95;id) Optional[SourceRecord]
+      +by#95;theme(theme) list[SourceRecord]
+      +by#95;perspective(perspective) list[SourceRecord]
+      +flagged() list[SourceRecord]
+      +summary() dict
+      +save(path) None
+      +load(path)$ 'SourceStore'
+    }
+  }
+  namespace ingestion.theme_tagger {
+    class m_ingestion_theme_tagger["ingestion.theme_tagger"] {
+      <<module>>
+      -#95;THEME#95;LOOKUP
+      +SURVEY#95;COLUMN#95;THEMES
+      +MAP#95;FILENAME#95;THEMES
+      +normalise#95;theme(raw) Optional[str]
+      +theme#95;for#95;survey#95;column(column#95;label) Optional[str]
+      +theme#95;for#95;map#95;filename(filename) tuple[Optional[str], bool]
+    }
+  }
+  namespace ingestion.wijkscan {
+    class m_ingestion_wijkscan["ingestion.wijkscan"] {
+      <<module>>
+      +IMAGE#95;SUFFIXES
+      +REPORT#95;HINTS
+      +CODED#95;SHEET
+      +MERGED#95;SHEET
+      +is#95;wijkscan#95;folder(root) bool
+      -#95;image#95;meta(filename) dict
+      +ingest#95;wijkscan#95;folder(root, case#95;id, case#95;label, verbose) IngestionResult
+    }
+  }
+  namespace app.services {
+    class Workspace
+  }
+  IngestionResult --> "1" SourceStore : store
+  IngestionResult "1" *-- "*" SourceDocument : documents
+  m_ingestion_buurtscan ..> SourceDocument
+  m_ingestion_buurtscan ..> SourceRecord
+  m_ingestion_buurtscan ..> SourceStore
+  m_ingestion_cli ..> SourceStore
+  m_ingestion_cli ..> Workspace
+  m_ingestion_parsers_buurtscan_expert_parser ..> SourceRecord
+  m_ingestion_parsers_buurtscan_survey_parser ..> SourceRecord
+  m_ingestion_parsers_demografie_parser ..> SourceRecord
+  m_ingestion_parsers_expert_parser ..> SourceRecord
+  m_ingestion_parsers_map_parser ..> SourceRecord
+  m_ingestion_parsers_notes_parser ..> SourceRecord
+  m_ingestion_parsers_reference_parser ..> SourceRecord
+  m_ingestion_parsers_resident_parser ..> SourceRecord
+  m_ingestion_parsers_survey_tally_parser ..> SourceRecord
+  SourceStore ..> SourceRecord
+  m_ingestion_wijkscan ..> IngestionResult
+  m_ingestion_wijkscan ..> SourceDocument
+  m_ingestion_wijkscan ..> SourceRecord
+  m_ingestion_wijkscan ..> SourceStore
+  m_ingestion_buurtscan ..> m_ingestion_config
+  m_ingestion_buurtscan ..> m_ingestion_parsers_buurtscan_expert_parser
+  m_ingestion_buurtscan ..> m_ingestion_parsers_buurtscan_survey_parser
+  m_ingestion_buurtscan ..> m_ingestion_parsers_demografie_parser
+  m_ingestion_buurtscan ..> m_ingestion_parsers_reference_parser
+  m_ingestion_buurtscan ..> m_ingestion_sources
+  m_ingestion_cli ..> m_ingestion_buurtscan
+  m_ingestion_cli ..> m_ingestion_parsers_expert_parser
+  m_ingestion_cli ..> m_ingestion_parsers_map_parser
+  m_ingestion_cli ..> m_ingestion_parsers_notes_parser
+  m_ingestion_cli ..> m_ingestion_parsers_resident_parser
+  m_ingestion_cli ..> m_ingestion_perspective_detector
+  m_ingestion_parsers_buurtscan_expert_parser ..> m_ingestion_theme_tagger
+  m_ingestion_parsers_expert_parser ..> m_ingestion_models
+  m_ingestion_parsers_expert_parser ..> m_ingestion_theme_tagger
+  m_ingestion_parsers_map_parser ..> m_ingestion_theme_tagger
+  m_ingestion_parsers_notes_parser ..> m_ingestion_models
+  m_ingestion_parsers_reference_parser ..> m_ingestion_config
+  m_ingestion_parsers_resident_parser ..> m_ingestion_theme_tagger
+  m_ingestion_parsers_survey_tally_parser ..> m_ingestion_parsers_buurtscan_survey_parser
+  m_ingestion_theme_tagger ..> m_ingestion_models
+  m_ingestion_wijkscan ..> m_ingestion_buurtscan
+  m_ingestion_wijkscan ..> m_ingestion_config
+  m_ingestion_wijkscan ..> m_ingestion_parsers_expert_parser
+  m_ingestion_wijkscan ..> m_ingestion_parsers_notes_parser
+  m_ingestion_wijkscan ..> m_ingestion_parsers_reference_parser
+  m_ingestion_wijkscan ..> m_ingestion_parsers_resident_parser
+  m_ingestion_wijkscan ..> m_ingestion_parsers_survey_tally_parser
+  m_ingestion_wijkscan ..> m_ingestion_perspective_detector
+  m_ingestion_wijkscan ..> m_ingestion_sources
+  style Workspace fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3

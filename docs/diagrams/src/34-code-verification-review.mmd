@@ -1,0 +1,163 @@
+---
+config:
+  layout: elk
+title: "Code · verification and review: checks, review log"
+---
+classDiagram
+  direction LR
+  namespace review.session {
+    class NeedsOverride {
+      <<exception>>
+    }
+    class ReviewError {
+      <<exception>>
+    }
+    class ReviewEvent {
+      <<dataclass>>
+      +seq: int
+      +ts: str
+      +actor: str
+      +action: str
+      +claim#95;id: Optional[str]
+      +before: Optional[str]
+      +after: Optional[str]
+      +comment: Optional[str]
+      +verification#95;status: Optional[str]
+      +evidence#95;ids: Optional[list[str]]
+      +recheck: Optional[dict]
+      +prev#95;hash: str
+      +hash: str
+      +compute#95;hash() str
+    }
+    class ClaimState {
+      <<dataclass>>
+      +claim#95;id: str
+      +original#95;text: str
+      +text: str
+      +claim#95;type: str
+      +evidence#95;ids: list[str]
+      +status: str
+      +verification: Optional[dict]
+      +override: bool
+      +comments: list[str]
+      +last#95;actor: Optional[str]
+      +last#95;ts: Optional[str]
+      +origin: str
+      +paragraph: int
+    }
+    class ReviewSession {
+      <<dataclass>>
+      +draft: SectionDraft
+      +events: list[ReviewEvent]
+      +start(draft, reviewer)$ 'ReviewSession'
+      -#95;append(actor, action, **kw) ReviewEvent
+      +verify#95;chain() list[str]
+      +states() dict[str, ClaimState]
+      -#95;claim(claim#95;id) DraftClaim
+      -#95;status#95;of(claim#95;id) Optional[str]
+      +approve(claim#95;id, actor, confirm#95;override, comment) None
+      +edit(claim#95;id, new#95;text, actor, comment, evidence#95;ids, reverify) None
+      +reject(claim#95;id, actor, comment) None
+      +comment(claim#95;id, text, actor) None
+      +reopen(claim#95;id, actor, comment) None
+      +add#95;claim(text, claim#95;type, evidence#95;ids, actor, paragraph) str
+      +pending() list[str]
+      +is#95;reviewed() bool
+      +final#95;claims() list[ClaimState]
+      +stats() dict
+      -#95;default#95;actor() str
+      +attach#95;index(index) 'ReviewSession'
+      +to#95;dict() dict
+      +save(path) None
+      +load(path)$ 'ReviewSession'
+    }
+    class m_review_session["review.session"] {
+      <<module>>
+      +RESOLVED
+      +ACTIONS
+    }
+  }
+  namespace verification.checks {
+    class Flag {
+      <<dataclass>>
+      +code: str
+      +severity: str
+      +message: str
+      +rule: Optional[str]
+      +source: Optional[str]
+      +to#95;dict() dict
+    }
+    class m_verification_checks["verification.checks"] {
+      <<module>>
+      +ANECDOTAL
+      +SEVERITY#95;ORDER
+      -#95;NUM#95;RE
+      -#95;RESIDENT#95;RE
+      -#95;EXPERT#95;RE
+      -#95;NORM#95;RE
+      -#95;MAJORITY#95;RE
+      -#95;GENERIC#95;GROUP#95;RE
+      -#95;QUANTIFIED#95;RE
+      -#95;COMPLIANCE#95;RE
+      -#95;PASSIVE#95;RE
+      -#95;SENT#95;SPLIT
+      +parse#95;numbers(text) list[float]
+      -#95;walk#95;numbers(obj) Iterable[float]
+      +evidence#95;numbers(evs) list[float]
+      +number#95;supported(n, pool, decimals#95;in#95;text) bool
+      -#95;sentences(text) list[str]
+      +style#95;flags(text, rules) list[Flag]
+      -#95;max#95;share(e) float
+      +verify#95;claim(claim, section, index, rules) dict
+      +salient#95;evidence(pack) list[Evidence]
+      -#95;repeated#95;openers(claims, min#95;repeats) list[str]
+      +verify#95;section(draft, pack, index) dict
+    }
+  }
+  namespace drafting.models {
+    class DraftClaim
+    class SectionDraft
+    class m_drafting_models["drafting.models"] {
+      <<module>>
+    }
+  }
+  namespace evidence.models {
+    class Evidence
+    class EvidencePack
+    class m_evidence_models["evidence.models"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.config {
+    class m_ingestion_config["ingestion.config"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.models {
+    class m_ingestion_models["ingestion.models"] {
+      <<module>>
+    }
+  }
+  ReviewSession --> "1" SectionDraft : draft
+  ReviewSession "1" *-- "*" ReviewEvent : events
+  ReviewSession ..> ClaimState
+  ReviewSession ..> DraftClaim
+  ReviewSession ..> NeedsOverride
+  ReviewSession ..> ReviewError
+  m_verification_checks ..> DraftClaim
+  m_verification_checks ..> Evidence
+  m_verification_checks ..> EvidencePack
+  m_verification_checks ..> SectionDraft
+  m_review_session ..> m_drafting_models
+  m_review_session ..> m_verification_checks
+  m_verification_checks ..> m_evidence_models
+  m_verification_checks ..> m_ingestion_config
+  m_verification_checks ..> m_ingestion_models
+  style DraftClaim fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style Evidence fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style EvidencePack fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SectionDraft fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_drafting_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_evidence_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_config fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3

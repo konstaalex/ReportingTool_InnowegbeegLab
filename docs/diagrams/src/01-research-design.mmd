@@ -1,0 +1,36 @@
+---
+config:
+  layout: elk
+title: "1 · Research design (DOT framework)"
+---
+flowchart TB
+  RQ["<b>Main research question</b><br/>Within InnoBeweegLab's zero-budget, standard-office-hardware setting,<br/>what is the most efficient, cost-effective and highest-value way<br/>to turn heterogeneous research data into a verifiably traceable,<br/>evidence-based draft report, with the researcher in control?"]
+
+  L["<b>LIBRARY</b> · Sep–Nov · done<br/><b>Q</b> Which techniques make AI-generated text traceable,<br/>and how reliable are they?<br/><b>Method</b> literature and grey-literature review (27+ approaches)<br/><b>Output</b> background research v13"]
+  F["<b>FIELD</b> · Sep–Oct · done; interviews open<br/><b>Q</b> How is a Wijkscan report made today, and what<br/>would let researchers verify a claim?<br/><b>Method</b> survey (n = 5), stakeholder meeting,<br/>analysis of the Oss report and its data<br/><b>Output</b> process description, analysis artifacts"]
+  D["<b>DESIGN</b> · Oct · done<br/><b>Prototype</b> evidence layer, drafting pipelines, verifier,<br/>review log, Word export<br/><b>Output</b> design decisions D1–D36, 107 tests"]
+  S3["<b>LAB / SQ3</b> · weeks 2–4<br/><b>Q</b> Which architecture gives the most traceable,<br/>useful drafts, at what cost?<br/><b>Method</b> controlled runs on the Oss case, 3 seeds,<br/>scored against the original report; Copilot baseline<br/><b>Output</b> H1–H5, H9"]
+  S4["<b>LAB / SQ4</b> · weeks 2–4<br/><b>Q</b> Does the chosen configuration run on a<br/>16 GB office laptop without a GPU?<br/><b>Method</b> CPU-only runs; one borrowed laptop<br/><b>Output</b> F1–F5"]
+  W["<b>WORKSHOP</b> · weeks 5–6<br/><b>Q</b> Does the review interface help researchers<br/>catch errors, and is the draft useful?<br/><b>Method</b> sessions with 4–5 researchers: blind ratings,<br/>planted errors with and without the evidence panel<br/><b>Output</b> H6–H8 (descriptive)"]
+  SH["<b>SHOWROOM</b> · January<br/><b>Q</b> Do the design principles hold beyond this case?<br/><b>Method</b> expert validation<br/><b>Output</b> generic design guidance"]
+  ANS["<b>Answer</b> to the main question, and design principles:<br/>compute before you generate · flag, never rewrite<br/>score against the ceiling"]
+
+  RQ --> L & F
+  L -- "what works in the literature" --> D
+  F -- "requirements, the real data" --> D
+  D --> S3
+  S3 -- "final configuration" --> S4
+  S3 -- "drafts to review" --> W
+  S4 --> ANS
+  S3 --> ANS
+  W --> SH
+  SH --> ANS
+
+  classDef done fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  classDef todo fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  classDef later fill:#f4f4f4,stroke:#8a8a8a,color:#1d2733,stroke-dasharray: 4 3
+  classDef key fill:#1f3a5f,stroke:#1f3a5f,color:#ffffff
+  class L,F,D done
+  class S3,S4,W todo
+  class SH later
+  class RQ,ANS key

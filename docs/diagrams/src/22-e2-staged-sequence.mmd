@@ -1,0 +1,28 @@
+---
+title: "E2 · staged pipeline for one theme section (UML sequence)"
+---
+sequenceDiagram
+  autonumber
+  participant RUN as reports.runs<br/>generate_report_run
+  participant PL as drafting.pipelines<br/>staged_pipeline
+  participant PR as llm.privacy<br/>check_request
+  participant OL as OllamaProvider<br/>(qwen2.5:7b)
+  participant V as verification.checks<br/>verify_section
+
+  RUN->>PL: run_pipeline(pack, PipelineConfig, provider)
+  Note over PL: select_evidence(pack, cfg)<br/>all, or top_k:N by salience
+  loop perspective in data, expert, bewoners (skipped if no evidence)
+    Note over PL: render prompt "staged_findings"<br/>with that perspective's evidence lines
+    PL->>PR: check_request(request, model info)
+    PR-->>PL: "local: nothing left the device"
+    PL->>OL: generate(request, JSON schema FINDINGS)
+    OL-->>PL: findings JSON + token counts + timings<br/>(or error: prompt cut off, window full, output limit)
+    Note over PL: normalise claims, keep evidence ids as given,<br/>append StageLog
+  end
+  Note over PL: render "staged_synthesis": findings + cross,<br/>reference and context evidence
+  PL->>OL: generate(request, JSON schema CLAIMS)<br/>(after the same privacy check)
+  OL-->>PL: synthesis claims
+  PL-->>RUN: SectionDraft (claims, StageLogs, errors)
+  RUN->>V: verify_section(draft, pack, index)
+  V-->>RUN: status per claim (grounded / weak / unsupported),<br/>section metrics, coverage gaps
+  Note over RUN,V: Conclusies and Aanleiding use one call (single_call_pipeline, output limit 3,000)

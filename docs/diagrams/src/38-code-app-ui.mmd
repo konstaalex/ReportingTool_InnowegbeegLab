@@ -1,0 +1,246 @@
+---
+config:
+  layout: elk
+title: "Code · app and ui: the Workspace facade and the Streamlit interface"
+---
+classDiagram
+  direction TB
+  namespace app.services {
+    class Workspace {
+      <<dataclass>>
+      +root: Path
+      +#95;#95;post#95;init#95;#95;() None
+      +p(*parts) Path
+      -#95;section#95;slug(section) str
+      +ingest(folder, cases, case#95;id, case#95;label, append) dict
+      -#95;merge(new)
+      +ingest#95;notes(path, case#95;id) dict
+      +notes(case#95;id) list[SourceRecord]
+      +write#95;notes#95;template(path)$ Path
+      +save#95;store() None
+      +images#95;dir(case#95;id) Path
+      +analyse#95;images(case#95;id, vision#95;model#95;id, samples) dict
+      +confirmations(case#95;id)
+      +image#95;records(case#95;id, kinds) list[SourceRecord]
+      +has#95;data() bool
+      +store() SourceStore
+      +ingestion#95;report() dict
+      +documents() list[dict]
+      +cases() dict[str, dict]
+      +case#95;label(case#95;id) str
+      +evidence(case#95;id, rebuild) dict[str, EvidencePack]
+      +evidence#95;index(case#95;id) dict[str, Evidence]
+      +source#95;records(evidence) list[SourceRecord]
+      +models() dict[str, dict]
+      +model#95;problems(model#95;id) list[str]
+      +generate(case#95;id, section, cfg, model#95;id, reviewer, replace#95;review) SectionDraft
+      +archived#95;sessions(case#95;id) list[Path]
+      +save#95;draft(draft) Path
+      +session(case#95;id, section) Optional[ReviewSession]
+      +save#95;session(session) None
+      +sessions(case#95;id) dict[str, ReviewSession]
+      +report#95;inputs(case#95;id) ReportInputs
+      +export#95;blockers(case#95;id, required#95;sections) list[str]
+      +export(case#95;id, preview, required#95;sections, pdf) dict[str, Path]
+      +selected#95;models() list[str]
+      +report#95;run(case#95;id, model#95;id, pipeline, pdf, progress) dict
+      +report#95;runs(case#95;id) list[dict]
+      +latest#95;report#95;runs(case#95;id) dict[str, str]
+      +report#95;run#95;dir(case#95;id, run#95;id) Path
+      +reference#95;report(case#95;id) Optional[Path]
+      +evaluate#95;report#95;run(case#95;id, run#95;id, reference#95;pdf, judge#95;model, progress) dict
+      +compare#95;report#95;runs(case#95;id, run#95;ids, reference#95;pdf, judge#95;model, progress) dict
+      +adopt#95;report#95;run(case#95;id, run#95;id, reviewer) list[str]
+    }
+    class m_app_services["app.services"] {
+      <<module>>
+      +SECTIONS
+    }
+  }
+  namespace ui.streamlit_app {
+    class m_ui_streamlit_app["ui.streamlit_app"] {
+      <<module>>
+      +STATUS#95;BADGE
+      +REVIEW#95;BADGE
+      +PERSPECTIVE#95;NL
+      +SECTION#95;HELP
+      +rerun() None
+      +get#95;ws(path) Workspace
+      +render#95;evidence(eid, index) None
+      -#95;pct(x) str
+    }
+  }
+  namespace drafting.models {
+    class SectionDraft
+    class m_drafting_models["drafting.models"] {
+      <<module>>
+    }
+  }
+  namespace drafting.pipelines {
+    class PipelineConfig
+    class m_drafting_pipelines["drafting.pipelines"] {
+      <<module>>
+    }
+  }
+  namespace evidence.builder {
+    class m_evidence_builder["evidence.builder"] {
+      <<module>>
+    }
+  }
+  namespace evidence.models {
+    class Evidence
+    class EvidencePack
+    class m_evidence_models["evidence.models"] {
+      <<module>>
+    }
+  }
+  namespace experiments.runner {
+    class m_experiments_runner["experiments.runner"] {
+      <<module>>
+    }
+  }
+  namespace export.content {
+    class m_export_content["export.content"] {
+      <<module>>
+    }
+  }
+  namespace export.docx_report {
+    class m_export_docx_report["export.docx_report"] {
+      <<module>>
+    }
+  }
+  namespace export.report {
+    class ReportInputs
+    class m_export_report["export.report"] {
+      <<module>>
+    }
+  }
+  namespace imaging.confirm {
+    class ConfirmationLog
+  }
+  namespace imaging.pipeline {
+    class m_imaging_pipeline["imaging.pipeline"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.buurtscan {
+    class IngestionResult
+    class m_ingestion_buurtscan["ingestion.buurtscan"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.models {
+    class SourceRecord
+    class m_ingestion_models["ingestion.models"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.parsers.notes_parser {
+    class m_ingestion_parsers_notes_parser["ingestion.parsers.notes_parser"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.sources {
+    class SourceDocument
+    class m_ingestion_sources["ingestion.sources"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.store {
+    class SourceStore
+  }
+  namespace ingestion.wijkscan {
+    class m_ingestion_wijkscan["ingestion.wijkscan"] {
+      <<module>>
+    }
+  }
+  namespace llm.registry {
+    class m_llm_registry["llm.registry"] {
+      <<module>>
+    }
+  }
+  namespace reports.evaluate {
+    class m_reports_evaluate["reports.evaluate"] {
+      <<module>>
+    }
+  }
+  namespace reports.runs {
+    class m_reports_runs["reports.runs"] {
+      <<module>>
+    }
+  }
+  namespace review.session {
+    class ReviewSession
+    class m_review_session["review.session"] {
+      <<module>>
+    }
+  }
+  namespace verification.checks {
+    class m_verification_checks["verification.checks"] {
+      <<module>>
+    }
+  }
+  Workspace ..> ConfirmationLog
+  Workspace ..> Evidence
+  Workspace ..> EvidencePack
+  Workspace ..> IngestionResult
+  Workspace ..> PipelineConfig
+  Workspace ..> ReportInputs
+  Workspace ..> ReviewSession
+  Workspace ..> SectionDraft
+  Workspace ..> SourceDocument
+  Workspace ..> SourceRecord
+  Workspace ..> SourceStore
+  m_ui_streamlit_app ..> Workspace
+  m_app_services ..> m_drafting_pipelines
+  m_app_services ..> m_evidence_builder
+  m_app_services ..> m_evidence_models
+  m_app_services ..> m_export_content
+  m_app_services ..> m_export_docx_report
+  m_app_services ..> m_export_report
+  m_app_services ..> m_imaging_pipeline
+  m_app_services ..> m_ingestion_buurtscan
+  m_app_services ..> m_ingestion_models
+  m_app_services ..> m_ingestion_parsers_notes_parser
+  m_app_services ..> m_ingestion_sources
+  m_app_services ..> m_ingestion_wijkscan
+  m_app_services ..> m_llm_registry
+  m_app_services ..> m_reports_evaluate
+  m_app_services ..> m_reports_runs
+  m_app_services ..> m_verification_checks
+  m_ui_streamlit_app ..> m_app_services
+  m_ui_streamlit_app ..> m_drafting_models
+  m_ui_streamlit_app ..> m_drafting_pipelines
+  m_ui_streamlit_app ..> m_experiments_runner
+  m_ui_streamlit_app ..> m_review_session
+  note for m_ui_streamlit_app "Top-level Streamlit script: seven tabs, 1 · Data, 1b · Afbeeldingen, 2 · Concept maken, 3 · Beoordelen, 4 · Exporteren, 5 · Rapport per model, 6 · Experimenten. Every tab calls Workspace."
+  style ConfirmationLog fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style Evidence fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style EvidencePack fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style IngestionResult fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style PipelineConfig fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style ReportInputs fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style ReviewSession fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SectionDraft fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SourceDocument fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SourceRecord fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SourceStore fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_drafting_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_drafting_pipelines fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_evidence_builder fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_evidence_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_experiments_runner fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_export_content fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_export_docx_report fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_export_report fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_imaging_pipeline fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_buurtscan fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_parsers_notes_parser fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_sources fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_wijkscan fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_llm_registry fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_reports_evaluate fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_reports_runs fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_review_session fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_verification_checks fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3

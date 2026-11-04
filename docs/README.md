@@ -15,7 +15,8 @@ later changes are recorded elsewhere; *earlier version* = kept to show how the d
 
 1. [Background research](research/InnoBeweegLab_BackgroundResearchReport_LaTeX_v13/) (why)
 2. [Analysis artifacts](analysis/InnoBeweegLab_AnalysisArtifacts_v2.md) (what the tool must do)
-3. [Design](design/reporting-tool-design.md) and [report structure](report-structure.md) (how it is built)
+3. [Design](design/reporting-tool-design.md), [report structure](report-structure.md) and the
+   [diagrams](diagrams/) (how it is built)
 4. [Hypotheses and thresholds](experiments/hypotheses-and-thresholds.md) and the
    [week-1 pilot](experiments/week1-pilot.md) (how it is tested)
 
@@ -39,6 +40,7 @@ later changes are recorded elsewhere; *earlier version* = kept to show how the d
 |---|---|---|---|
 | [Reporting tool design](design/reporting-tool-design.md) | inputs, the pipeline from source cell to approved report, design decisions D1–D36 with their reasons, verifier checks, review and export, experiment set-up, open questions for InnoBeweegLab, current status and what is still to build | 4 Nov | current (§13 has the latest state) |
 | [Report structure](report-structure.md) | the chapters of a Wijkscan report and where each one's content comes from, figures, traceability in the document, full reports per model, how a generated report is compared with the original | 25 Oct | current |
+| [Design diagrams](diagrams/) (Mermaid sources, SVG and PNG) | research design, experiment design and validation; C4 context, containers, components and deployment; every architecture under study; UML of all the code: packages, class diagrams per package (generated from `src/`, all 69 modules), sequences for ingest, experiment run, review and export, images, state machines, the verifier, the traceability chain | 4 Nov | current |
 
 ## 4. Experiments and evaluation
 
@@ -70,9 +72,9 @@ Kept in the author's project folder or as private Claude artifacts; available on
 | Requirements Engineering (Word) | versions 1 and 1.1 of the analysis artifacts | 29 Sep – 9 Oct | earlier version |
 | GenAI cost comparison and business case; the product owner's cost and GDPR response | hosted and local model options, costs, data residency | 14–18 Sep | background; prices not re-checked since |
 | Stakeholder survey (questionnaire and export) and first-meeting questions | field data analysed in the background research | 8–29 Sep | current |
-| Architecture diagrams (PNG, SVG, editable DOT) | stakeholder overview, technical architecture, traceability and review flow, experiment roadmap | 23 Oct | partly current: check against §13 of the design |
+| Architecture diagrams (PNG, SVG, editable DOT) | stakeholder overview, technical architecture, traceability and review flow, experiment roadmap | 23 Oct | earlier version: replaced by [the diagrams folder](diagrams/) |
 | Reporting pipeline architecture (PNG) | the pipeline as planned early October | 2 Oct | earlier version |
-| Standup deck and Standup Q&A (Claude artifacts) | the chosen architecture against the alternatives; code-architecture diagrams (package layers, traceability chain, map measurement, evaluation design); model choice | 26–27 Oct | partly current: they use the old letters A–D |
+| Standup deck and Standup Q&A (Claude artifacts) | the chosen architecture against the alternatives; code-architecture diagrams (package layers, traceability chain, map measurement, evaluation design); model choice | 26–27 Oct | partly current: they use the old letters A–D; the diagrams folder has the current versions |
 | Evidence Engine Architecture, System Design (data flow and class diagrams), Experiment Design, Evaluation Approach (Claude artifacts) | first designs and evaluation plans | 10 Sep – 2 Oct | earlier versions |
 
 ## 7. Known gaps
@@ -80,6 +82,6 @@ Kept in the author's project folder or as private Claude artifacts; available on
 - **The review interface is not documented** outside the code (`src/ui/streamlit_app.py`, seven
   tabs). Needed: annotated screenshots, the design reasons linked to the HCI literature in the
   background research, and the usability test plan (H6).
-- **No single current architecture diagram set.** The diagrams are spread over the design
-  document, the analysis artifacts, the diagrams folder and the standup artifacts, with different
-  dates.
+- **Diagrams in the analysis artifacts** (use-case diagram, domain model) are from the analysis
+  phase; the [diagrams folder](diagrams/) shows the code as it is. Where they differ, the diagrams
+  folder is current.

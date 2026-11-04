@@ -1,0 +1,62 @@
+---
+config:
+  layout: elk
+title: "3 · Validation framework: from run records to conclusions"
+---
+flowchart TB
+  subgraph IN["Inputs"]
+    direction TB
+    RR["<b>Run records</b><br/>one per report and seed<br/>(workspace/runs, workspace/reports)"]
+    OR["<b>Original Oss report</b><br/>250 statements · evaluation only<br/>confidential, never a prompt"]
+    HL["<b>Human labels</b><br/>two raters, agreed label<br/>per statement"]
+    SD["<b>Session data</b><br/>ratings, errors caught,<br/>minutes per section"]
+  end
+
+  subgraph ME["Measures (computed by code)"]
+    direction TB
+    U["<b>U</b> unsupported-claim rate<br/>verification/checks.py"]
+    S["<b>S</b> coverage of what the data supports<br/>ceiling · numbers found back · number conflicts<br/>reports/evaluate.py"]
+    TM["time, tokens, peak model memory<br/>llm/resources.py"]
+  end
+
+  subgraph CH["Validity checks"]
+    direction TB
+    K["<b>Scorer agreement</b><br/>κ between raters; κ of word overlap<br/>and of the local judge vs agreed labels<br/>≥ 0.61 → that scorer gives S"]
+    V["<b>V1</b> GPU vs CPU<br/>same configuration, 3 seeds each"]
+  end
+
+  subgraph ST["Statistics"]
+    direction TB
+    M["mean ± sd over 3 seeds"]
+    BS["95% bootstrap interval of the paired difference<br/>(claims for U, statements for S, within sections)"]
+    MMD["minimum meaningful difference<br/>5 percentage points"]
+  end
+
+  DEC{{"<b>Outcome per comparison</b><br/>better / worse · no meaningful difference · inconclusive"}}
+
+  subgraph OUT["Conclusions"]
+    direction TB
+    Q3["<b>SQ3</b> H1–H5, H9<br/>which architecture"]
+    Q4["<b>SQ4</b> F1–F5 pass/fail<br/>CPU-only runs, borrowed laptop"]
+    QW["<b>Workshop</b> H6–H8<br/>described, not tested"]
+  end
+
+  RR --> U & S & TM
+  OR --> S
+  HL --> K
+  K -- "chooses the scorer for S" --> S
+  U & S --> M --> BS --> DEC
+  MMD --> DEC
+  V -- "may move the comparison to the CPU" --> DEC
+  DEC --> Q3
+  TM --> Q4
+  SD --> QW
+
+  classDef data fill:#f6f8fb,stroke:#55657a,color:#1d2733
+  classDef meas fill:#eef3f8,stroke:#1f3a5f,color:#1d2733
+  classDef chk fill:#fff4dc,stroke:#b07d10,color:#1d2733
+  classDef out fill:#e3efe6,stroke:#2f6b3f,color:#1d2733
+  class RR,OR,HL,SD data
+  class U,S,TM,M,BS,MMD meas
+  class K,V chk
+  class Q3,Q4,QW out

@@ -1,0 +1,61 @@
+---
+title: "Code · state machines: a claim under review (review.session) and an image reading (imaging.confirm)"
+---
+stateDiagram-v2
+  direction LR
+
+  state "Claim · ClaimState.status, rebuilt from the review events" as CLAIM {
+    direction LR
+    state "draft (pending)" as draft
+    state ApproveCheck <<choice>>
+    state "approved" as approved
+    state "edited" as edited
+    state "rejected" as rejected
+    [*] --> draft : start (AI claim)
+    [*] --> edited : add_claim (researcher, origin human)
+    draft --> ApproveCheck : approve
+    ApproveCheck --> approved : [grounded] event approve
+    ApproveCheck --> approved : [weak or unsupported + confirm_override] event override_approve, override = true
+    ApproveCheck --> draft : [weak or unsupported, no confirm] NeedsOverride, no event
+    draft --> edited : edit (AI text kept, recheck stored)
+    draft --> rejected : reject
+    approved --> edited : edit
+    edited --> approved : approve
+    approved --> rejected : reject
+    edited --> rejected : reject
+    rejected --> approved : approve
+    rejected --> edited : edit
+    approved --> draft : reopen (override = false)
+    edited --> draft : reopen
+    rejected --> draft : reopen
+  }
+
+  state "Image reading · ConfirmationLog.status(record_id)" as READ {
+    direction LR
+    state "unconfirmed" as unconfirmed
+    state "confirmed" as confirmed
+    state "corrected" as corrected
+    state "rejected" as rejected_r
+    [*] --> unconfirmed : analyse_case_images
+    unconfirmed --> confirmed : confirm
+    unconfirmed --> corrected : correct(value)
+    unconfirmed --> rejected_r : reject
+    confirmed --> unconfirmed : reopen
+    corrected --> unconfirmed : reopen
+    rejected_r --> unconfirmed : reopen
+  }
+
+  note right of rejected
+    approve, edit and reject are accepted in any state: the last event wins.
+    Every approve passes the same override check (choice) first.
+    comment changes nothing but the comments. approved, edited and rejected
+    count as resolved, export needs every claim resolved (or a preview).
+    Every event carries prev_hash and hash (SHA-256): verify_chain()
+    finds a changed history, and export is then blocked.
+  end note
+
+  note right of rejected_r
+    Evidence: rejected readings dropped, a corrected value replaces the
+    model's, unconfirmed ones get the verifier flag image_unconfirmed.
+    Map measurements made in code need no confirmation.
+  end note

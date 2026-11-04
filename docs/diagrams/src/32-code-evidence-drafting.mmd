@@ -1,0 +1,269 @@
+---
+config:
+  layout: elk
+title: "Code · evidence and drafting: source records → evidence → cited claims"
+---
+classDiagram
+  direction LR
+  namespace drafting.models {
+    class DraftClaim {
+      <<dataclass>>
+      +claim#95;id: str
+      +text: str
+      +claim#95;type: str
+      +evidence#95;ids: list[str]
+      +paragraph: int
+      +origin: str
+      +stage: Optional[str]
+      +verification: Optional[dict]
+      +#95;#95;post#95;init#95;#95;() None
+      +to#95;dict() dict
+      +from#95;dict(d)$ 'DraftClaim'
+    }
+    class StageLog {
+      <<dataclass>>
+      +stage: str
+      +provider: str
+      +model: str
+      +prompt#95;version: Optional[str]
+      +prompt#95;sha: Optional[str]
+      +latency#95;s: float
+      +input#95;tokens: Optional[int]
+      +output#95;tokens: Optional[int]
+      +retries: int
+      +parsed#95;ok: bool
+      +error: Optional[str]
+      +raw#95;output: Optional[str]
+      +evidence#95;sent: list[str]
+      +privacy: Optional[str]
+      +timings: Optional[dict]
+      +to#95;dict() dict
+    }
+    class SectionDraft {
+      <<dataclass>>
+      +draft#95;id: str
+      +case#95;id: str
+      +section: str
+      +pipeline#95;id: str
+      +claims: list[DraftClaim]
+      +stages: list[StageLog]
+      +created#95;at: str
+      +model: Optional[dict]
+      +evidence#95;ids#95;available: list[str]
+      +unavailable#95;inputs: list[str]
+      +section#95;checks: Optional[dict]
+      +errors: list[str]
+      +config: dict
+      +narrative() str
+      +to#95;dict() dict
+      +from#95;dict(d)$ 'SectionDraft'
+    }
+    class m_drafting_models["drafting.models"] {
+      <<module>>
+      +CLAIM#95;TYPES
+      +CLAIM#95;TYPE#95;LABELS
+      +now#95;iso() str
+    }
+  }
+  namespace drafting.pipelines {
+    class PipelineConfig {
+      <<dataclass>>
+      +pipeline#95;id: str
+      +prompt#95;version: str
+      +selection: str
+      +temperature: float
+      +seed: Optional[int]
+      +max#95;output#95;tokens: int
+      +max#95;output#95;tokens#95;single#95;call: int
+      +case#95;label: str
+      +allow#95;resident#95;text#95;to#95;hosted: bool
+      +include#95;quotes: bool
+      +extra: dict
+      +to#95;dict() dict
+    }
+    class m_drafting_pipelines["drafting.pipelines"] {
+      <<module>>
+      +PIPELINES
+      +CLAIMS#95;SCHEMA
+      +FINDINGS#95;SCHEMA
+      -#95;TYPE#95;ALIASES
+      -#95;ID#95;CLEAN
+      +STAGED#95;GROUPS
+      +SINGLE#95;CALL#95;SECTIONS
+      +select#95;evidence(pack, cfg) EvidencePack
+      -#95;evidence#95;block(items) str
+      -#95;normalise#95;claims(raw, prefix, start, stage, default#95;paragraph) list[DraftClaim]
+      -#95;call(provider, cfg, task, user, schema, items, draft, max#95;output#95;tokens) Optional[dict]
+      -#95;new#95;draft(pack, cfg, provider) SectionDraft
+      -#95;prefix(section) str
+      -#95;theme#95;picks(items) list[tuple[Evidence, str, int]]
+      -#95;conclusion#95;picks(items) list[tuple[Evidence, str, int]]
+      +template#95;pipeline(pack, cfg) SectionDraft
+      +naive#95;pipeline(pack, provider, cfg) SectionDraft
+      +staged#95;pipeline(pack, provider, cfg) SectionDraft
+      +single#95;call#95;pipeline(pack, provider, cfg, prompt) SectionDraft
+      +run#95;pipeline(pack, cfg, provider) SectionDraft
+    }
+  }
+  namespace drafting.prompts {
+    class m_drafting_prompts["drafting.prompts"] {
+      <<module>>
+      +PROMPTS#95;DIR
+      -#95;read(version, name) str
+      +render(version, name, **values) str
+      +prompt#95;sha(version) str
+      +writing#95;rules#95;text() str
+      +system#95;prompt(version) str
+    }
+  }
+  namespace evidence.builder {
+    class _Ids {
+      +#95;#95;init#95;#95;() None
+      +next(perspective, section, code) str
+    }
+    class m_evidence_builder["evidence.builder"] {
+      <<module>>
+      +SCALE#95;NL
+      +LIKERT#95;POSITIVE
+      +NOTE#95;PERSPECTIVE
+      +nl#95;num(x, decimals) str
+      +pct(k, n) int
+      -#95;clean#95;option(o) str
+      -#95;stmt#95;text(r) str
+      -#95;score#95;txt(v) str
+      +expert#95;evidence(records, case#95;id, ids) dict[str, list[Evidence]]
+      -#95;norm#95;text(t) str
+      +remark#95;evidence(records, case#95;id, ids) dict[str, list[Evidence]]
+      -#95;group#95;answers(records) 'OrderedDict[str, list[SourceRecord]]'
+      -#95;totals#95;record(records, block#95;id) list[str]
+      -#95;quotes(rs, case#95;id, section, ids, question#95;label, exclude#95;labels) list[Evidence]
+      +survey#95;evidence(records, case#95;id, ids, mapping, n#95;respondents) dict[str, list[Evidence]]
+      +demografie#95;evidence(records, case#95;id, ids) tuple[dict[str, list[Evidence]], list[str]]
+      -#95;short#95;group(g) str
+      +tally#95;evidence(records, case#95;id, ids, mapping) dict[str, list[Evidence]]
+      +coded#95;evidence(records, case#95;id, ids) dict[str, list[Evidence]]
+      -#95;pct#95;or#95;none(v) Optional[int]
+      +image#95;evidence(records, case#95;id, ids, confirmations) tuple[dict[str, list[Evidence]], list[str]]
+      +note#95;evidence(records, case#95;id, ids) dict[str, list[Evidence]]
+      -#95;quoted(statement) str
+      -#95;term#95;text(e) Optional[str]
+      -#95;nl#95;list(items) str
+      +recurring#95;terms(theme#95;items, case#95;id, ids) list[Evidence]
+      +cross#95;theme#95;evidence(theme#95;items, case#95;id, ids) list[Evidence]
+      +norm#95;evidence(store, case#95;id, ids, measured) dict[str, list[Evidence]]
+      +comparison#95;evidence(expert, survey, case#95;id, ids) dict[str, list[Evidence]]
+      +build#95;case#95;evidence(store, case#95;id, n#95;respondents, confirmations) dict[str, EvidencePack]
+      +evidence#95;index(packs) dict[str, Evidence]
+    }
+  }
+  namespace evidence.models {
+    class Evidence {
+      <<dataclass>>
+      +evidence#95;id: str
+      +case#95;id: str
+      +themes: list[str]
+      +perspective: str
+      +kind: str
+      +statement: str
+      +data: dict
+      +source#95;record#95;ids: list[str]
+      +salience: float
+      +contains#95;free#95;text: bool
+      +method: str
+      +note: Optional[str]
+      +to#95;dict() dict
+      +from#95;dict(d)$ 'Evidence'
+      +prompt#95;line() str
+    }
+    class EvidencePack {
+      <<dataclass>>
+      +case#95;id: str
+      +section: str
+      +items: list[Evidence]
+      +unavailable: list[str]
+      +built#95;with: dict
+      +by#95;id() dict[str, Evidence]
+      +ids() list[str]
+      +select(ids) 'EvidencePack'
+      +top#95;k(k) 'EvidencePack'
+      +to#95;dict() dict
+      +from#95;dict(d)$ 'EvidencePack'
+    }
+    class m_evidence_models["evidence.models"] {
+      <<module>>
+      +THEME#95;CODES
+      +GENERAL#95;CODE
+      +GENERAL
+      +AANLEIDING
+      +CONCLUSIES
+      +SECTION#95;CODES
+      +PERSPECTIVE#95;CODES
+      +NOTE#95;CODE
+      +PERSPECTIVE#95;LABELS#95;NL
+    }
+  }
+  namespace ingestion.config {
+    class m_ingestion_config["ingestion.config"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.models {
+    class SourceRecord
+    class m_ingestion_models["ingestion.models"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.parsers.buurtscan_survey_parser {
+    class m_ingestion_parsers_buurtscan_survey_parser["ingestion.parsers.buurtscan_survey_parser"] {
+      <<module>>
+    }
+  }
+  namespace ingestion.store {
+    class SourceStore
+  }
+  namespace llm.base {
+    class GenerationRequest
+    class LLMProvider
+    class Message
+    class PrivacyViolation
+  }
+  namespace llm.privacy {
+    class m_llm_privacy["llm.privacy"] {
+      <<module>>
+    }
+  }
+  SectionDraft "1" *-- "*" DraftClaim : claims
+  SectionDraft "1" *-- "*" StageLog : stages
+  EvidencePack "1" *-- "*" Evidence : items
+  m_drafting_pipelines ..> DraftClaim
+  m_drafting_pipelines ..> Evidence
+  m_drafting_pipelines ..> EvidencePack
+  m_drafting_pipelines ..> GenerationRequest
+  m_drafting_pipelines ..> LLMProvider
+  m_drafting_pipelines ..> Message
+  m_drafting_pipelines ..> PrivacyViolation
+  m_drafting_pipelines ..> SectionDraft
+  m_drafting_pipelines ..> StageLog
+  m_evidence_builder ..> Evidence
+  m_evidence_builder ..> EvidencePack
+  m_evidence_builder ..> SourceRecord
+  m_evidence_builder ..> SourceStore
+  m_drafting_pipelines ..> m_drafting_models
+  m_drafting_pipelines ..> m_drafting_prompts
+  m_drafting_pipelines ..> m_evidence_models
+  m_drafting_pipelines ..> m_llm_privacy
+  m_drafting_prompts ..> m_ingestion_config
+  m_evidence_builder ..> m_evidence_models
+  m_evidence_builder ..> m_ingestion_config
+  m_evidence_builder ..> m_ingestion_models
+  m_evidence_builder ..> m_ingestion_parsers_buurtscan_survey_parser
+  style GenerationRequest fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style LLMProvider fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style Message fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style PrivacyViolation fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SourceRecord fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style SourceStore fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_config fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_models fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_ingestion_parsers_buurtscan_survey_parser fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3
+  style m_llm_privacy fill:#f4f4f4,stroke:#9a9a9a,color:#555555,stroke-dasharray: 4 3

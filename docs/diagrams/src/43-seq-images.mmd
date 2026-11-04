@@ -1,0 +1,68 @@
+---
+config:
+  sequence:
+    wrap: false
+    width: 180
+    noteMargin: 8
+title: "Code · sequence: maps measured in code, infographics read by a model, readings confirmed (UC7)"
+---
+sequenceDiagram
+  autonumber
+  actor R as Researcher
+  participant UI as ui.streamlit_app<br/>(tab 1b · Afbeeldingen) or imaging.cli
+  participant WS as Workspace
+  participant IP as imaging.pipeline
+  participant MP as imaging.maps
+  participant VS as imaging.vision
+  participant LLM as vision model<br/>(LLMProvider)
+  participant CL as imaging.confirm<br/>ConfirmationLog
+  participant ST as SourceStore
+
+  R->>UI: analyse images [with a vision model]
+  UI->>WS: analyse_images(case, vision_model_id, samples=3)
+  opt vision model chosen
+    Note over WS: validate_model_config · get_provider ·<br/>capabilities.vision must be true
+  end
+  WS->>IP: analyse_case_images(store, case, images_dir, provider)
+  opt the case has a region_reference map (config/images.toml)
+    IP->>MP: RegionTemplate.from_map(reference map, legend, seeds)
+  end
+  loop every image record of the case (kind from config/images.toml)
+    alt map_classes
+      IP->>MP: measure_classes(path, legend, seeds, overlay_to)
+      Note over MP: detect_swatches · label_swatches · detect_regions ·<br/>classify → colour shares per neighbourhood + overlay PNG
+      MP-->>IP: MapMeasurement
+    else map_objects
+      IP->>MP: count_objects(path, legend, seeds, region_template)
+      Note over MP: detect_swatches · classify · align_regions to the template ·<br/>tint_score → markers counted per neighbourhood
+      MP-->>IP: MapMeasurement (counts)
+    else map_zones (needs the template)
+      IP->>MP: measure_zone_coverage(path, legend, zone, template)
+      Note over MP: align_basemap (edge maps, NCC search) · border_agreement ·<br/>tint_score → share of homes and area inside the distance zone
+      MP-->>IP: MapMeasurement (coverage)
+    else infographic (needs a vision model)
+      IP->>VS: read_infographic(path, provider, title, samples, n_tiles)
+      loop samples × tiles
+        VS->>LLM: generate(image bytes, READ_PROMPT, READING_SCHEMA)
+        LLM-->>VS: values as printed
+      end
+      Note over VS: ensemble (agreement over samples) · sanity_checks
+      VS-->>IP: ReadingRun of Readings
+    else map_vision
+      IP->>VS: describe_map(path, provider, title, measure, areas)
+      VS-->>IP: observations per area
+    else chart_derived, proposal_map, superseded, unknown
+      Note over IP: not read, with the reason in the summary
+    end
+    Note over IP: _measurement_records: one SourceRecord per area<br/>record_kind image_measurement (deterministic) or<br/>image_reading / image_observation (model-assisted)
+  end
+  IP->>ST: replace the case's earlier image-derived records · add_many
+  IP-->>WS: summary.json (status per image)
+  WS->>WS: save_store
+
+  Note over R,ST: model readings stay "unconfirmed" until a researcher checks them against the image
+  R->>UI: confirm, correct the value, or reject a reading
+  UI->>WS: confirmations(case)
+  UI->>CL: confirm(id, actor) · correct(id, value, actor) · reject(id, actor)
+  Note over CL: append-only, hash-chained (like the review log)<br/>images/<case>/confirmations.json
+  Note over WS,CL: next evidence(case): build_case_evidence reads ConfirmationLog.status ·<br/>rejected readings dropped · corrected value used · unconfirmed ones flagged by the verifier (image_unconfirmed)

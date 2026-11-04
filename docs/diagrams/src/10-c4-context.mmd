@@ -1,0 +1,39 @@
+---
+config:
+  layout: elk
+title: "C4 level 1 · System context"
+---
+flowchart TB
+  LR_["<b>Lead researcher</b><br/>[Person]<br/>writes the Wijkscan report; owns<br/>interpretation and recommendations"]
+  FR["<b>Field researcher</b><br/>[Person]<br/>collects survey and walk data,<br/>codes open answers, writes notes"]
+  RV["<b>Reviewing colleague</b><br/>[Person]<br/>checks every claim before<br/>the report goes out"]
+  TL["<b>Lab tech lead</b><br/>[Person]<br/>installs the tool, chooses models,<br/>runs the experiments"]
+
+  SYS["<b>InnoBeweegLab reporting tool</b><br/>[Software system]<br/>turns survey, expert-walk, map and demographic data into a<br/>traceable draft Wijkscan report: every claim cites evidence,<br/>every evidence item cites source cells; nothing is exported<br/>until a researcher has approved every claim"]
+
+  DATA["<b>Research data files</b><br/>[External · on the laptop]<br/>Excel sheets, QGIS map PNGs,<br/>Word demographics, RIVM rules PDF"]
+  OLL["<b>Ollama model server</b><br/>[External · same laptop]<br/>runs the local language and<br/>vision models"]
+  HOST["<b>Hosted model API</b><br/>[External · optional, EU]<br/>Azure OpenAI or Mistral; only for<br/>experiment E6, never resident free text<br/>without a logged override"]
+  ORIG["<b>Original Wijkscan report</b><br/>[External · confidential]<br/>used only to score drafts,<br/>never as drafting input"]
+  CLIENT["<b>Municipality</b><br/>[Person · client]<br/>reads the finished report"]
+  COP["<b>Microsoft 365 Copilot</b><br/>[External · not connected]<br/>current practice; compared by hand<br/>as baseline C0"]
+
+  FR -- "supplies data, notes; confirms image readings" --> SYS
+  LR_ -- "generates drafts, edits, approves, exports" --> SYS
+  RV -- "reviews claims with their evidence" --> SYS
+  TL -- "configures models; runs experiments" --> SYS
+  SYS -- "reads (never changes)" --> DATA
+  SYS -- "prompts and images via HTTP, localhost" --> OLL
+  SYS -. "E6 only, pseudonymised" .-> HOST
+  SYS -- "reads for evaluation" --> ORIG
+  SYS -- "approved Word report + evidence map" --> CLIENT
+  TL -. "baseline C0, by hand" .-> COP
+
+  classDef person fill:#08427b,stroke:#052e56,color:#ffffff
+  classDef system fill:#1168bd,stroke:#0b4884,color:#ffffff
+  classDef ext fill:#8c8c8c,stroke:#6b6b6b,color:#ffffff
+  classDef extopt fill:#b3b3b3,stroke:#6b6b6b,color:#1d2733,stroke-dasharray: 5 3
+  class LR_,FR,RV,TL,CLIENT person
+  class SYS system
+  class DATA,OLL,ORIG ext
+  class HOST,COP extopt
