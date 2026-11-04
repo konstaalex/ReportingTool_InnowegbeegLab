@@ -1,0 +1,57 @@
+\section{Introduction}\label{sec:intro}
+
+\subsection{Application domain}\label{sec:domain}
+
+InnoBeweegLab is InnoBeweegLab's own applied-research lab, producing \textquotedblleft{}Wijkscan\textquotedblright{} neighbourhood reports that combine three data perspectives — resident survey/coded data, expert walkthrough scores, and QGIS map images — into a written report used by municipal and health-sector stakeholders to decide where to invest in sport, play, and public space. Today that synthesis step (turning raw coded data and scores into readable, evidence-backed prose) is done by hand. The general application domain my thesis sits in is \textbf{AI-assisted report generation from heterogeneous research data} — the same problem space as RAG-based document QA, automated qualitative-analysis tooling, and citation-grounded long-form generation, but specialised to a resource-constrained, non-technical, small-team research context rather than a well-funded enterprise one.
+
+
+
+\subsection{Research question}\label{sec:rq}
+
+My current main research question (reframed 2026-09-18 around efficiency/cost/value — see the Project Plan, Section 3):
+
+
+
+\begin{calloutbox}{teal}{Main research question}
+
+\textquotedblleft{}Within InnoBeweegLab's zero-budget, standard-office-hardware setting, what is the most efficient, cost-effective, and highest-value way to design a system that transforms heterogeneous qualitative and quantitative research data — via traceable observations and conclusions — into a verifiably traceable, evidence-based draft report, while keeping the researcher in control through a human-in-the-loop validation step?\textquotedblright{}
+
+\end{calloutbox}
+
+My focus is the \textbf{traceability of the generated report back to that data}, and — per the Project Plan's Quality Management chapter (Section 10.1) — how well that report compares to InnoBeweegLab's own human-written output. \textit{(Revision trail: the question was first worded 2026-09-15 without naming an architecture — \textquotedblleft{}How can heterogeneous research data be processed by an AI-based system into draft reports whose content is reliably and verifiably traceable back to that source data?\textquotedblright{} — and before that still named \textquotedblleft{}a multi-agent AI system\textquotedblright{} specifically, an assumption I removed the same day per coach feedback.)}
+
+
+
+\subsubsection*{DOT sub-questions}
+
+\addcontentsline{toc}{subsubsection}{DOT sub-questions}
+
+The main research question above is broken down into sub-questions following the DOT framework's five research types (Library, Field, Lab, Workshop, Showroom), as set out in the Project Plan. This literature review itself answers the Library sub-question; the rest are listed here so the whole research question is visible in one place.
+
+
+
+\begingroup\renewcommand{\arraystretch}{1.3}
+\begin{longtable}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}p{11.3cm}|}
+\hline
+\cellcolor{navy}\textcolor{white}{\textbf{DOT phase}} & \cellcolor{navy}\textcolor{white}{\textbf{Sub-question}} \\ \hline
+\endfirsthead
+\hline
+\cellcolor{navy}\textcolor{white}{\textbf{DOT phase}} & \cellcolor{navy}\textcolor{white}{\textbf{Sub-question}} \\ \hline
+\endhead
+\textbf{Library} & What techniques (citation-grounding, provenance tracking, RAG, structured extraction) exist in the literature for producing traceable AI-generated text from source data, and how reliable are they? — answered by this review. \\ \hline
+\rowcolor{light}
+\textbf{Field} & What does InnoBeweegLab's current workflow look like, and what would let researchers actually verify a report claim against its source data? — documented from InnoBeweegLab's own report, data and documents in Section~\ref{sec:process}; still to be confirmed in interviews. \\ \hline
+\textbf{Lab / SQ3} (architecture, efficiency \& cost) & Which combination of pipeline architecture (e.g. a single-pass pipeline with built-in verification vs. a multi-agent pipeline with a dedicated grounding-checker role), retrieval-augmented generation, and model deployment strategy (locally-run small models vs. a hybrid cloud fallback) produces the most traceable, efficient, and cost-effective draft report sections, tested empirically on real (anonymised) InnoBeweegLab data and a standard 16GB-RAM office laptop — not assumed. \\ \hline
+\rowcolor{light}
+\textbf{Lab / SQ4} (deployment feasibility) & Whichever architecture SQ3 favours on the traceability/efficiency/cost trade-off, is it feasible within InnoBeweegLab's zero-budget, standard-office-hardware constraint (16GB RAM, no dedicated GPU) — local small model vs. hybrid local+cloud fallback — without sacrificing the traceability established in SQ3? \\ \hline
+\textbf{Workshop} & Co-designing a review/validation interface with researchers that surfaces traceability (which source each claim came from) — informed by literature showing that visible provenance/uncertainty info doesn't automatically improve human error-catching (see Section~\ref{sec:res-hitl}), so this interface needs its own usability validation, not just a working backend. \\ \hline
+\rowcolor{light}
+\textbf{Showroom} & Expert validation of both the traceability approach and the review interface, producing generalisable design guidance (the Master-level \textquotedblleft{}produce generic knowledge, not just a product\textquotedblright{} requirement). \\ \hline
+\end{longtable}
+\endgroup
+
+\subsection{Overview of this document}\label{sec:overview}
+
+Section~\ref{sec:process} (\textbf{How InnoBeweegLab builds a Wijkscan report today}) documents the application domain in practice: the method, what each of the three perspectives produces, how the report is assembled from it, where the time and the judgement go, and which parts of a report a tool can trace. Section~\ref{sec:background} (\textbf{Background}) traces where citation-grounded generation came from, states the specific gap in the literature that my thesis's local/zero-budget angle fills, gives two overview figures of the field, and defines the terms used throughout. Section~\ref{sec:results} (\textbf{Relevant results}) lists the concrete findings that my own system and evaluation will be measured against or will try to improve on. These include benchmark numbers, failure-mode taxonomies, production-system audits, the literature on systematic evaluation methodology itself (\ref{sec:res-evalmethod}), my own stakeholder survey (\ref{sec:res-survey}), and the literature on reading maps and charts automatically (\ref{sec:res-maps}). Section~\ref{sec:methods} (\textbf{Inspiring methodologies}) covers the methods and best practices I am adopting directly. These include the evaluation methodology for scoring generated report sections against InnoBeweegLab's own human-written Wijkscan report, grounded in Section~\ref{sec:res-evalmethod}'s literature, and the way the tool analyses the map inputs (\ref{sec:m-maps}). Section~\ref{sec:conclusion} (\textbf{Conclusion}) summarises and ties everything back to the research question. \textbf{References} lists every source cited above, for import into Zotero.
+
+

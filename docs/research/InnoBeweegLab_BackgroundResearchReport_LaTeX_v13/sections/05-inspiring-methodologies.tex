@@ -1,0 +1,75 @@
+\section{Inspiring methodologies}\label{sec:methods}
+
+\textit{Methods and best practices I found in the literature (and, where explicitly noted, in the grey-literature review) that I am adopting directly in my own design — and why.}
+
+
+
+\subsection{Atomic-claim decomposition + automated scoring, logged over repeated runs}\label{sec:m-harness}
+
+RAGAS, FActScore, and SAFE all score generation by decomposing it into atomic claims and checking each independently; Inspect AI and DeepEval generalise this into a reusable harness pattern (frozen test set + automated scoring + logged runs); \textquotedblleft{}Do Repetitions Matter?\textquotedblright{} (arXiv:2509.24086) adds that LLM stochasticity means a single run per condition risks mistaking noise for a real difference — the same point Biderman et al. make at the level of an entire evaluation field (Section~\ref{sec:res-evalmethod}). \textbf{This is interesting to me because it is exactly the harness already implemented} (\texttt{src/evaluation/} — \texttt{metrics.py} for the atomic-claim scoring, \texttt{runner.py} for repeated runs per condition, \texttt{results\_log.py} for mean$\pm$stdev logging across runs) rather than an idea still to build. The one limitation carried over explicitly: these metrics are currently \textit{structural} proxies (they score \texttt{cited\_ids} already attached to a claim), because UC2 (draft generation) doesn't exist yet to produce real free text to decompose — the upstream LLM-judge extraction step is the documented next step once it does, and per Section~\ref{sec:res-evalmethod} it will need its own measured human-agreement check before being trusted, not just a plausible prompt.
+
+
+
+\subsection{Provenance-by-construction, not provenance-by-retrofit}\label{sec:m-provenance}
+
+Auto-TA's Quote ID (every code/theme carries a direct pointer to its transcript segment) and PaperTrail's bi-directional decomposition both build traceability into the data structure from the first processing step, rather than trying to attribute a already-generated block of text after the fact. \textbf{This is interesting to me because it is the same design principle UC1's \texttt{SourceRecord.locator} already follows} — every ingested row, cell, or image gets a precise locator at ingestion time, before any drafting happens — and it's the reason the evaluation harness's citation metrics are meaningful at all: there is nothing to misattribute if every unit already carries its true source id.
+
+I take the principle one step further for numbers: \textbf{compute before you generate}. Every count, share and average in a draft is computed in code from the source records before any model is called, and stored as an evidence item with its own id and the ids of the records it was computed from. The drafting model only writes sentences that cite those ids; it never calculates. PAL and Program of Thoughts (Section~\ref{sec:res-compute}) support letting code do the computation, and MapQA (Section~\ref{sec:res-maps}) supports extracting the data before any reasoning. What the literature does not show is whether this pays off for spreadsheet data like InnoBeweegLab's. I therefore test it directly in the Lab phase: the same single prompt, once with the computed evidence and once with the raw spreadsheet rows.
+
+
+
+\subsection{Reference-and-baseline comparison — evaluating report quality against InnoBeweegLab's own human-written report, as an application of the general evaluation-methodology literature in \texorpdfstring{Section~\ref{sec:res-evalmethod}}{Section 4.7}}\label{sec:m-reference}
+
+This answers \textquotedblleft{}how do I evaluate model performance for report generation, given data, to be as good as the real InnoBeweegLab report\textquotedblright{} — but, following feedback that this needed to be grounded research rather than an invented protocol, it is presented here explicitly as an \textit{application} of the general literature on systematic evaluation design (Section~\ref{sec:res-evalmethod}), not a one-off checklist for this project alone. Concretely: the \textit{what/where/how} structure (Chang et al., Section~\ref{sec:res-evalmethod}) is used to separate the three questions below; any LLM-judge component is treated as a measured, bias-prone instrument rather than a ground truth (Gu et al.; Zheng et al.; Judge's Verdict — Section~\ref{sec:res-evalmethod}); and the reproducibility and human-evaluation documentation practices below are stated explicitly, rather than left implicit, specifically to avoid the gap Mei et al. (Section~\ref{sec:res-evalmethod}) find in roughly half of published NLP evaluation studies.
+
+
+
+It combines three pieces, two already built and one still to run:
+
+
+
+\begin{enumerate}
+\item \textbf{Structural/automated layer (built; \textquotedblleft{}how\textquotedblright{} = automatic metric, no LLM-judge yet).} The evaluation harness in \texttt{src/evaluation/} scores faithfulness, citation precision/recall, fabrication rate, misgrounding rate, and injected-error catch rate against a frozen gold set — the ALCE/RAGAS/FActScore/AttributionBench/PaperTrail pattern from Sections~\ref{sec:res-generation}--\ref{sec:res-pipelines}, chosen specifically because Section~\ref{sec:gap} shows citation presence alone cannot be trusted. This layer catches the structural failure modes (an uncited claim, a claim citing the wrong record) cheaply and repeatably, and is the first filter every generated draft goes through. It currently contains no LLM-judge component — it scores \texttt{cited\_ids} structurally — so none of Section~\ref{sec:res-evalmethod}'s documented judge biases (position, verbosity, self-enhancement) apply to it yet; they become relevant only once the upstream claim-extraction step (Section~\ref{sec:m-harness}) is added, at which point, per the Judge's Verdict precedent (Section~\ref{sec:res-evalmethod}), that step must itself be benchmarked against InnoBeweegLab's human reviewer's agreement rate, not simply trusted on its raw output.
+\item \textbf{Reference-report comparison (to run once UC2 exists; \textquotedblleft{}where\textquotedblright{} = the real report + naive baseline, \textquotedblleft{}how\textquotedblright{} = human rubric).} The Project Plan's own Quality Management chapter (Section 10.1) sets the actual acceptance bar: the prototype must be \textquotedblleft{}evaluated on real, anonymised InnoBeweegLab data... against a human-written reference and a naive baseline.\textquotedblright{} The human-written reference is the real \textbf{\textquotedblleft{}Rapportage Wijkscan Euterpepark Oss\textquotedblright{} report} already produced by InnoBeweegLab for that neighbourhood (confidential — not reproduced or quoted in this document, consistent with the ingestion package's own no-real-data-in-the-repo discipline) and the naive baseline is an un-grounded or template-only draft of the same section. Scoring follows the same precedent as the Chalmers/Volvo thesis (Section~\ref{sec:res-prior}) and the PaperTrail human study (Section~\ref{sec:res-hitl}): a structured rubric, scored by a human researcher (ideally the InnoBeweegLab researcher who actually wrote the original Euterpepark report, during the Phase 4 stakeholder evaluation), covering at minimum:
+\begin{itemize}
+\item \textbf{Content coverage} — does the generated section mention the same key findings (per theme) as the real report, missing neither a finding nor adding one the source data doesn't support?
+\item \textbf{Traceability} — can every claim in the generated section actually be traced to a specific source record, and does that record genuinely say what the claim claims (this is where the automated harness's output feeds directly into the human rubric rather than being a separate, disconnected check)?
+\item \textbf{Factual accuracy / tone fit} — are numbers and quotes accurate, and does the writing read as a usable InnoBeweegLab report rather than a generic AI summary (the Looppanel/Askable grey-literature items, \S5.1–5.2 of the companion review, are directly relevant here: AI-assisted qualitative writing tends to miss nuance a human researcher would catch).
+\end{itemize}
+\end{enumerate}
+
+Scoring the generated draft, the naive baseline, \textit{and} the real report side-by-side (rather than just the generated draft in isolation) is what makes \textquotedblleft{}as good as the given report example\textquotedblright{} a measurable claim instead of a subjective impression — directly mirroring the Langfuse RAG-evaluation guide's practitioner framing (grey-literature review \S1.5) of tracing the \textit{whole} pipeline output against ground truth, not grading an answer in a vacuum.
+
+
+
+Per van der Lee et al.'s best-practice checklist and the specific gap Mei et al. (Section~\ref{sec:res-evalmethod}) find in roughly half of published studies, this rubric step commits in advance to documenting, in the final report rather than leaving implicit: the exact rating instrument and scale used for each of the three criteria above; who the rater(s) were and why they are qualified (the InnoBeweegLab researcher who authored the original Euterpepark report, where possible); and — because only one or two qualified raters are realistically available in this project's resource-constrained setting, which rules out a power-analysis-justified sample size — an explicit written acknowledgment of that limitation, so it is stated rather than silently absent, as it is in roughly half the literature Mei et al. surveyed.
+
+
+
+\begin{enumerate}
+\item \textbf{Repeated, logged runs across architecture variants (to run during SQ3's Lab-phase experiment).} Both layers above get run multiple times per condition (per Section~\ref{sec:m-harness}'s repeats discipline and Biderman et al.'s reproducibility recommendations, Section~\ref{sec:res-evalmethod}) across the single-pass-vs-multi-agent and local-vs-hybrid-cloud variants SQ3 is comparing, so the final architecture choice for SQ4 is backed by logged, repeated measurements (mean$\pm$stdev, not a single run) against the same reference report and the same naive baseline — not a one-off impression from a single run.
+\end{enumerate}
+
+\subsection{Local, zero-budget deployment practices}\label{sec:m-local}
+
+GATOS (Section~\ref{sec:res-pipelines}) demonstrates a fully local thematic-analysis pipeline; llama.cpp's GGUF quantization (grey-literature review \S6.1) is the concrete mechanism that makes a 7–9B model fit in 16GB RAM at all — the actual lever, as opposed to vLLM's PagedAttention (grey-literature review \S6.2), which solves a different problem (many concurrent users) that InnoBeweegLab's single-laptop deployment doesn't have. The Hacker News \textquotedblleft{}Ask HN: How are you doing RAG locally?\textquotedblright{} thread's finding that hybrid BM25+vector retrieval tends to outperform vector-only search (grey-literature review \S2.1), and the Stephen Jonany article's PDF-preparation advice (grey-literature review \S1.6, naming LlamaParse — itself reviewed and kept at arm's length for its cloud-only, API-key requirement, grey-literature review \S7.1) are both interesting to me as low-effort, well-evidenced defaults for the ingestion/retrieval layer rather than unproven guesses.
+
+
+
+\subsection{Extract first, reason second: analysing the map inputs as the reference report does}\label{sec:m-maps}
+
+MapQA and DePlot (Section~\ref{sec:res-maps}) show that an image is best turned into a table before any language model reasons about it. That is the same principle as provenance-by-construction (Section~\ref{sec:m-provenance}): every value the drafting model may use is extracted first, with a locator that names the image and the region it came from. \textbf{This is interesting to me because it lets a map statement be checked like a spreadsheet cell}, and because the reference report already makes three kinds of statement from its maps (Table~\ref{tab:rules-maps}). Each kind needs its own measurement.
+
+\begin{enumerate}
+\item \textbf{Buildings coloured by class} (Beweeggroen-, Basisbehoefte- and Sportaccommodatiekaart). Read the legend colours, find the neighbourhoods as the regions enclosed by their border lines, and count the building pixels of each legend class per neighbourhood. This yields statements of the form \textquotedblleft{}in neighbourhood N, x\% of the coloured buildings have green within 300\,m\textquotedblright{}. It measures map area, not the number of homes, and every statement has to say so.
+\item \textbf{Distance zones} (Sport- en speelkaart). Under translucent zones the border lines are hard to find, so the zone map is first aligned with a map that has the same base layer. This is a classic image-registration problem (Zitov\'a \& Flusser, 2003), solved here by normalised cross-correlation of the street and building edges. Buildings and borders are then carried over from the aligned map, and a building counts as covered when its pixels carry the zone's tint. The alignment has to be checked independently: in my tests on the reference case's maps, the share of carried-over borders that land on the map's own border lines was 0.95--0.99 for a correct alignment and 0.30--0.47 for a deliberately wrong one.
+\item \textbf{Markers by type} (Beweegstructuur- and Voorzieningenkaart). Count the markers per legend type and neighbourhood. These are counts, not distances, so they cannot test a distance rule on their own.
+\end{enumerate}
+
+The other images are handled in three ways:
+\begin{itemize}
+\item \textbf{Printed numbers} on the infographics are read by a local vision-language model of the Qwen2.5-VL class. The image is read several times and the median is taken (self-ensembling, Berkane et al.), together with range checks, for example that percentages lie between 0 and 100. A value counts as evidence only after the researcher has confirmed it, in line with the human-in-the-loop results in Section~\ref{sec:res-hitl}.
+\item \textbf{The sunburst} is not read at all, because it is drawn from the totals workbook, which is ingested directly.
+\item \textbf{The inspiration map} shows proposals, so it is never used as evidence about the current situation.
+\end{itemize}
+Every measurement also writes an overlay image showing what was counted, so the researcher can check it at a glance. The model readings are scored against values I checked by hand, so that the vision models compared in SQ3 are judged on accuracy, not on how plausible their output looks.

@@ -2,7 +2,7 @@
 
 Personas, scenarios, use cases, user stories, requirements, test cases and domain model, with the implementation status of 30 October 2026.
 
-**Version 2 — 30 October 2026** · Alex Constantinescu · Master of Applied IT (Fontys ICT), InnoBeweegLab capstone project
+**Version 2.1 — 4 November 2026** · Alex Constantinescu · Master of Applied IT (Fontys ICT), InnoBeweegLab capstone project
 
 Markdown edition of `InnoBeweegLab_AnalysisArtifacts_v2.pdf`, generated from the same LaTeX source (`InnoBeweegLab_AnalysisArtifacts_LaTeX_v2/`). The diagrams are drawn in Mermaid.
 
@@ -27,6 +27,7 @@ Markdown edition of `InnoBeweegLab_AnalysisArtifacts_v2.pdf`, generated from the
 | 2026-09-29 | 1 | *Innoweegbeg AI Reporting Tool — Requirements Engineering* (Word): context and scope, four personas, three scenarios, use cases UC1–UC6, user stories US1–US10, FR1–FR16, NFR1–NFR12, traceability summary, workflow, test cases TC1–TC14 and the domain model of the ingestion code. |
 | 2026-10-09 | 1.1 | Review notes added: a consistency check against the research questions and the stakeholder survey. No corrections; three optional suggestions left to the author (kept unchanged in Section 9). |
 | 2026-10-30 | 2 | This document, as PDF and as this Markdown file with the same content. The content of version 1.1 is kept word for word. Added: an implementation status for every use case, user story, requirement and test case, with the code or test that shows it; the domain model as now implemented; use cases UC7–UC9, user stories US11–US14, requirements FR17–FR21 and test cases TC15–TC22 for what was built since 29 September, each marked *(added 30 Oct)*; a use-case diagram; the workflow redrawn as built; review notes of 30 October. |
+| 2026-11-04 | 2.1 | UC9 status: the approaches are named by their experiment number (E1, E2, E4), as in the experiment plan, instead of the letters A, B and D, which meant something else in the implementation brief. |
 
 ## 1 Introduction
 
@@ -105,7 +106,7 @@ Nine use cases: UC1–UC6 from 29 September, and UC7–UC9 for what was built si
 | UC6 | Export the approved report | Lead Researcher | Produce a final report document matching InnoBeweegLab's report structure | **Built, tested** |
 | UC7 *(new)* | Analyse the images of a case | Lead Researcher, Field Researcher | Turn map images and infographics into citable, checked evidence | **Built, tested** (maps); vision reading: **Built, no model run yet** |
 | UC8 *(new)* | Record researcher notes | Field Researcher, Lead Researcher | Make team knowledge that no source file holds citable, with a source | **Built, tested** |
-| UC9 *(new)* | Compare models against the original report | Lab Tech Lead | Measure which model and pipeline produce the best report | **Partly** (approaches A, B; D not built) |
+| UC9 *(new)* | Compare models against the original report | Lab Tech Lead | Measure which model and pipeline produce the best report | **Partly** (approaches E1 and E2; the checker variant E4 not built) |
 
 ```mermaid
 flowchart LR

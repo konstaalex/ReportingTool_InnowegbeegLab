@@ -39,7 +39,7 @@ provider = "ollama"
 model = "qwen2.5:7b"             # 4.7 GB download
 location = "local"
 base_url = "http://localhost:11434"
-num_ctx = 16384                  # measured at 8192: 4.9 GB (Ollama) / 5.1 GB (RSS) on an M1 Pro
+num_ctx = 16384                  # M1 Pro, GPU: 4.8 GB (Ollama) at 8192, 5.1-5.2 GB at 16384
 ram_gb_estimate = 7.0
 capabilities = { structured_output = true, context_tokens = 32768, reliable_token_usage = true }
 
