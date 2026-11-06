@@ -16,6 +16,8 @@ workspace*/
 !docs/**/*.png
 # our own analysis document (no research data)
 !docs/analysis/*.pdf
+# portfolio-evidence PDFs built from docs/experiments/*.md (no research data)
+!docs/experiments/pdf/*.pdf
 
 # ---- Python / tooling --------------------------------------------------------
 .venv/

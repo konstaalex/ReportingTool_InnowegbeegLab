@@ -1,0 +1,31 @@
+% Shared styling for the portfolio-evidence PDFs (included by pandoc as header).
+\usepackage{xcolor}
+\definecolor{navy}{HTML}{1F3A5F}
+\definecolor{muted}{HTML}{55657A}
+\definecolor{rule}{HTML}{C9D3DF}
+\usepackage{titlesec}
+\titleformat{\section}{\Large\bfseries\color{navy}}{}{0pt}{}[\vspace{1pt}{\color{rule}\titlerule}]
+\titleformat{\subsection}{\large\bfseries\color{navy}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{16pt}{8pt}
+\titlespacing*{\subsection}{0pt}{12pt}{4pt}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{muted}InnoBeweegLab reporting prototype · portfolio evidence}
+\fancyhead[R]{\small\color{muted}Alex Constantinescu}
+\fancyfoot[C]{\small\color{muted}\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\small\color{muted}\thepage}\renewcommand{\headrulewidth}{0pt}}
+\usepackage{etoolbox}
+\AtBeginEnvironment{longtable}{\small}
+\renewcommand{\arraystretch}{1.25}
+\setlength{\LTpre}{6pt}
+\setlength{\LTpost}{8pt}
+\usepackage{caption}
+\captionsetup{font={small,it},labelformat=empty,justification=centering}
+\usepackage{fvextra}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\},fontsize=\small}
+\fvset{breaklines=true,fontsize=\small}
+\setlength{\parskip}{5pt}
+\setlength{\parindent}{0pt}
+\raggedbottom

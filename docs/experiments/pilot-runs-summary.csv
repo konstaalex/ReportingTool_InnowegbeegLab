@@ -1,0 +1,11 @@
+run_id,tag,round,experiment,pipeline,model,device,seeds,code_version,minutes,model_calls,tokens_in,tokens_out,output_tokens_per_s,model_peak_gb,claims,grounded_rate,weak_rate,unsupported_rate,coverage,ceiling,coverage_of_supportable,numbers_agree_rate,failed_sections
+20261103-135758-E0-9460,pilot-week1,1,E0,template,none (template),-,1,caabbdd,0.1,0,0,0,,,72,1.0,0.0,0.0,0.146,0.524,0.271,0.452,
+20261103-135805-E1-e237,pilot-week1,1,E1,naive,qwen2.5:7b,GPU,1,caabbdd,11.2,8,39053,8986,22.7,5.06,55,0.709,0.073,0.218,0.098,0.524,0.172,0.233,Conclusies
+20261103-140920-E2-78d7,pilot-week1,1,E2,staged,qwen2.5:7b,GPU,1,caabbdd,14.6,26,83872,11480,23.5,5.5,76,0.776,0.158,0.066,0.104,0.524,0.183,0.233,Conclusies
+20261103-142357-E2-52bf,pilot-week1,1,E2,staged,qwen2.5:7b,CPU only,1,caabbdd,58.7,26,83940,12020,7.1,5.21,85,0.788,0.106,0.106,0.152,0.524,0.279,0.329,
+20261104-133113-E0-ba16,pilot-week1b,2,E0,template,none (template),-,1,c9417ac,0.1,0,0,0,,,72,1.0,0.0,0.0,0.146,0.524,0.271,0.452,
+20261104-133119-E1-0ee7,pilot-week1b,2,E1,naive,qwen2.5:7b,GPU,1,c9417ac,10.1,8,66515,6350,21.5,5.72,54,0.611,0.13,0.259,0.09,0.524,0.149,0.192,
+20261104-134127-E2-3e48,pilot-week1b,2,E2,staged,qwen2.5:7b,GPU,1,c9417ac-dirty,13.0,26,89899,10361,23.5,5.69,82,0.756,0.159,0.085,0.104,0.524,0.183,0.233,
+20261104-135428-E2-e4d2,pilot-week1b,2,E2,staged,qwen2.5:7b,CPU only,1,c9417ac-dirty,77.1,26,89967,14041,4.6,5.55,75,0.773,0.12,0.107,0.15,0.524,0.275,0.329,Conclusies; Ontmoeten
+20261104-230002-E2-4dff,smoke-models,M,E2,staged,qwen3:8b,GPU,3,09ea99a,5.0,4,14602.667,1421,20.933,7.59,15.667,0.978,0.022,0.0,,,,,
+20261104-230505-E2-43ae,smoke-models,M,E2,staged,llama3.1:8b,GPU,3,09ea99a,5.7,4,14603,1620,19.833,7.09,23.333,0.941,0.028,0.032,,,,,
