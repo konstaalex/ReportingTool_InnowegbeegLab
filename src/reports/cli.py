@@ -80,7 +80,7 @@ def main(argv: list[str] | None = None) -> int:
     g.add_argument("--case", required=True)
     g.add_argument("--model", required=True, help="model id from config/models.toml, or 'template'")
     g.add_argument("--pipeline", default="staged", choices=["naive", "staged"])
-    g.add_argument("--prompt-version", default="v2")
+    g.add_argument("--prompt-version", default="v3")
     g.add_argument("--sections", nargs="*")
     g.add_argument("--pdf", action="store_true", help="also convert the Word file to PDF (needs LibreOffice)")
     g.add_argument("--seed", type=int, default=42)

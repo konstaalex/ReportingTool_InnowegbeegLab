@@ -68,7 +68,7 @@ def _stage_timings(stages) -> dict:
 
 
 def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str = "staged",
-                        prompt_version: str = "v2", sections: Optional[list[str]] = None, seed: int = 42,
+                        prompt_version: str = "v3", sections: Optional[list[str]] = None, seed: int = 42,
                         selection: str = "all", render: bool = True, pdf: bool = False,
                         progress: Optional[Callable[[str], None]] = None, temperature: float = 0.2,
                         include_quotes: bool = True, allow_resident_text_to_hosted: bool = False,

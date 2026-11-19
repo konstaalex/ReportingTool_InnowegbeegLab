@@ -18,6 +18,7 @@ Verification is NOT part of a pipeline: it always runs afterwards
 """
 from __future__ import annotations
 
+import copy
 import re
 import time
 import uuid
@@ -29,7 +30,7 @@ from llm.base import GenerationRequest, LLMProvider, Message, PrivacyViolation
 from llm.privacy import check_request
 
 from .models import CLAIM_TYPES, DraftClaim, SectionDraft, StageLog
-from .prompts import prompt_sha, render, system_prompt
+from .prompts import evidence_id_cap, prompt_sha, render, system_prompt
 
 PIPELINES = ("template", "naive", "staged")
 
@@ -58,6 +59,19 @@ FINDINGS_SCHEMA = {
     "required": ["findings"],
 }
 
+
+def claims_schema(prompt_version: str, key: str = "claims") -> dict:
+    """The answer schema for a prompt version. From v3 `evidence_ids` has maxItems (P7):
+    Ollama turns the schema into a grammar, so the model cannot cite more ids than the cap."""
+    base = CLAIMS_SCHEMA if key == "claims" else FINDINGS_SCHEMA
+    cap = evidence_id_cap(prompt_version)
+    if not cap:
+        return base
+    schema = copy.deepcopy(base)
+    schema["properties"][key]["items"]["properties"]["evidence_ids"]["maxItems"] = cap
+    return schema
+
+
 _TYPE_ALIASES = {"finding": "bevinding", "interpretation": "interpretatie", "conclusion": "conclusie",
                  "recommendation": "aanbeveling", "observatie": "bevinding", "feit": "bevinding"}
 _ID_CLEAN = re.compile(r"[\[\]\s()]")
@@ -66,7 +80,7 @@ _ID_CLEAN = re.compile(r"[\[\]\s()]")
 @dataclass
 class PipelineConfig:
     pipeline_id: str = "naive"
-    prompt_version: str = "v2"
+    prompt_version: str = "v3"
     selection: str = "all"               # "all" | "top_k:<n>"
     temperature: float = 0.2
     seed: Optional[int] = 42
@@ -224,7 +238,7 @@ def naive_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: PipelineConfi
     user = render(cfg.prompt_version, "naive_section", section=pack.section, case_label=cfg.case_label or pack.case_id,
                   unavailable="\n".join(f"- {u}" for u in pack.unavailable) or "- (niets)",
                   evidence=_evidence_block(sel.items))
-    parsed = _call(provider, cfg, "naive_section", user, CLAIMS_SCHEMA, sel.items, draft)
+    parsed = _call(provider, cfg, "naive_section", user, claims_schema(cfg.prompt_version), sel.items, draft)
     if parsed:
         draft.claims = _normalise_claims(parsed.get("claims", []), _prefix(pack.section), 1, "naive_section")
     return draft
@@ -244,7 +258,8 @@ def staged_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: PipelineConf
             continue
         user = render(cfg.prompt_version, "staged_findings", section=pack.section,
                       case_label=cfg.case_label or pack.case_id, perspective=label, evidence=_evidence_block(items))
-        parsed = _call(provider, cfg, f"staged_findings_{label}", user, FINDINGS_SCHEMA, items, draft)
+        parsed = _call(provider, cfg, f"staged_findings_{label}", user,
+                       claims_schema(cfg.prompt_version, "findings"), items, draft)
         if parsed:
             new = _normalise_claims(parsed.get("findings", []), prefix, len(findings) + 1,
                                     f"staged_findings_{label}", default_paragraph=para)
@@ -256,7 +271,7 @@ def staged_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: PipelineConf
     user = render(cfg.prompt_version, "staged_synthesis", section=pack.section,
                   case_label=cfg.case_label or pack.case_id, findings=finding_lines,
                   evidence=_evidence_block(synth_items))
-    parsed = _call(provider, cfg, "staged_synthesis", user, CLAIMS_SCHEMA,
+    parsed = _call(provider, cfg, "staged_synthesis", user, claims_schema(cfg.prompt_version),
                    synth_items + [e for e in sel.items if any(e.evidence_id in c.evidence_ids for c in findings)], draft)
     if parsed:
         synth = _normalise_claims(parsed.get("claims", []), prefix, len(findings) + 1, "staged_synthesis",
@@ -283,7 +298,7 @@ def single_call_pipeline(pack: EvidencePack, provider: LLMProvider, cfg: Pipelin
     user = render(cfg.prompt_version, prompt, case_label=cfg.case_label or pack.case_id,
                   unavailable="\n".join(f"- {u}" for u in pack.unavailable) or "- (niets)",
                   evidence=_evidence_block(sel.items))
-    parsed = _call(provider, cfg, prompt, user, CLAIMS_SCHEMA, sel.items, draft,
+    parsed = _call(provider, cfg, prompt, user, claims_schema(cfg.prompt_version), sel.items, draft,
                    max_output_tokens=cfg.max_output_tokens_single_call)
     if parsed:
         draft.claims = _normalise_claims(parsed.get("claims", []), _prefix(pack.section), 1, prompt)

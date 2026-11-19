@@ -1,0 +1,17 @@
+Onderdeel: conclusies over alle thema's heen, voor $case_label.
+
+De bewijsstukken hieronder vatten de thema's samen: gemiddelde scores per thema, de uitkomst van de getoetste RIVM-vuistregels per gebied, factoren die bij meerdere thema's terugkomen, en de vergelijking tussen experts en bewoners.
+
+Schrijf 4 tot 8 beweringen, verdeeld over 2 of 3 alinea's (veld "paragraph"):
+- wat in het onderzoeksgebied goed gaat en wat achterblijft, met cijfers uit de bewijsstukken, en in welke buurten;
+- welke factoren bij meerdere thema's terugkomen (bijvoorbeeld verlichting of onderhoud) en bij welke thema's;
+- waar perspectieven elkaar versterken of tegenspreken.
+Minstens 3 beweringen zijn van type "conclusie". Geen aanbevelingen; die schrijft de onderzoeker.
+
+Niet beschikbaar (noem deze niet als feit):
+$unavailable
+
+Bewijsstukken:
+$evidence
+
+JSON-schema: {"claims": [{"text": "...", "type": "bevinding|interpretatie|conclusie", "evidence_ids": ["..."], "paragraph": 1}]}
