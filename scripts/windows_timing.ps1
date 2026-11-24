@@ -35,6 +35,14 @@ if ($LASTEXITCODE -ne 0) { Write-Host "psutil missing: pip install -r requiremen
 ollama --version
 if ($LASTEXITCODE -ne 0) { Write-Host "Ollama not found: install it from https://ollama.com/download and reopen PowerShell"; exit 1 }
 
+# Free memory before the model loads. The speed test of 19 Nov started with ~7.5 GB in use and
+# peaked at 15.9 of 15.7 GB, so Windows paged and the times came out slower than they should.
+$freeGB = [math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory / 1MB, 1)
+Write-Host "Free memory before the run: $freeGB GB"
+if ($freeGB -lt 9) {
+    Write-Host "!! Less than 9 GB free: close VS Code, browsers, Teams and Outlook first, or timings will be off."
+}
+
 # Arguments go to python as an array, so paths with spaces need no extra quoting.
 function Run([string[]]$cmd) {
     & python @cmd
@@ -72,7 +80,7 @@ Write-Host "== 2. Template (E0), single prompt (E1), staged (E2)"
 $t = @{}
 foreach ($e in @("E0", "E1", "E2")) {
     $cmd = @("-m", "experiments.cli", "run", $e, "--workspace", $Workspace, "--tag", $Tag)
-    if ($e -ne "E0") { $cmd += @("--seed", "42", "--cold") }
+    if ($e -ne "E0") { $cmd += @("--seed", "42", "--cold", "--cpu-only") }   # --cpu-only: num_gpu 0, and the record says so
     $sw = [Diagnostics.Stopwatch]::StartNew()
     Run $cmd
     $t[$e] = [math]::Round($sw.Elapsed.TotalMinutes, 1)
@@ -85,7 +93,7 @@ $cpu = (Get-CimInstance Win32_Processor | Select-Object -First 1).Name
 $ram = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
 & {
     Get-Date
-    "CPU: $cpu   RAM: $ram GB"
+    "CPU: $cpu   RAM: $ram GB   free at start: $freeGB GB"
     python -c "import platform; print(platform.platform())"
     "Wall-clock min: E0=$($t['E0']) E1=$($t['E1']) E2=$($t['E2'])"
     ollama ps

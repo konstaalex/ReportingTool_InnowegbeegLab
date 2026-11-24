@@ -2,7 +2,7 @@
 
 Read this first. It is the hand-over from the claude.ai project "Innoweegbeg" (planning,
 research and documents) to Claude Code on Alex's laptop (running things). Last updated
-19 November 2026. When something here changes, update this file in the same commit.
+19 November 2026 (evening, after the Windows speed test). When something here changes, update this file in the same commit.
 
 ## 1. The project in five lines
 
@@ -187,13 +187,26 @@ Done:
   S 15% (E1), 18% (E2, GPU), 28% (E2, CPU), 27% (E0); E2 on CPU took 77 min, peak 5.5 GB.
   Findings P1–P8 in `docs/experiments/week1-pilot.md`; P7 (invented ids) and P8 (dirty flag)
   are fixed (`tests/test_pilot_fixes.py`).
+- **Windows speed test, 19 Nov** (tag `pilot-windows2`, commit `5283ecb`, 14:07–16:40): E0
+  0.1 min; E1 68.9 min with 4 of 8 sections failed; E2 82.3 min with 1 failed (Conclusies).
+  Every failure was the 600 s per-call timeout; finished E1 sections took 219–538 s. Fixed:
+  `timeout_s = 3600` for the three drafting models in `config/models.toml`. True time per report
+  is therefore about 80–95 min (E1) and 85–95 min (E2): under 3 h, so stages 2 and 3 keep all
+  six themes, and F2 (8 h) passes easily. Model memory peaked at 8.3–8.9 GB (sum of the Ollama
+  processes; Ollama itself reports 5.7 GB): under the 9.6 GB limit, but with little margin.
+  System memory hit 15.9 of 15.7 GB because ~7.5 GB was in use before the run, so Windows paged.
+  Aanleiding produced nothing: it needs "Projectcontext" researcher notes
+  (`Onderzoekersnotities.xlsx`), which are missing. E0 on Windows equals E0 on the Mac (72 claims,
+  0% unsupported, 27% coverage).
 
 Next, in order:
 
-1. **Speed test now:** `powershell -ExecutionPolicy Bypass -File scripts\windows_timing.ps1 -SkipPull`
-   (ingests Oss, then E0, E1, E2 once each, tag `pilot-windows`; expect 2–4 h). Paste the
-   summary file `workspace\windows_timing_<stamp>.txt` back to the planning chat.
-2. Decide the stage-2 scope from the minutes per report.
+1. Done: the speed test (above). One check run with the new timeout and `--cpu-only` is
+   advised before the freeze: `scripts\windows_timing.ps1 -SkipPull -SkipIngest -Tag pilot-windows3`
+   (all sections must finish).
+2. Stage-2 scope: proposed to drop vector and hybrid (keep all, top-25, BM25); Alex decides
+   before the freeze. Also before the freeze: decide whether to restore the researcher notes
+   (Aanleiding), since inputs must be fixed for all conditions.
 3. Build E4 and E1R per §6, with tests on synthetic data; count E1R tokens (R4).
 4. Ask the second rater; one labelling session for the S-scorer labels (89 statements), the
    50 verifier verdicts, and the blind E2/E4 support check.
@@ -211,10 +224,14 @@ whether the 10 synthetic cases join the counted runs (they can give U, time, mem
 
 ## 8. How to work in this repo
 
-- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (141 tests).
+- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (142 tests).
 - Commit code, prompts and config **before** starting a run, so its record is not `-dirty`.
-- Long runs: laptop on power, power mode "Best performance", sleep off, heavy apps closed.
-  Every model run starts cold (`--cold`).
+- Long runs: laptop on power, power mode "Best performance", sleep off. **At least 9 GB free
+  memory at the start**: close VS Code, browsers, Teams, Outlook (the script warns below 9 GB).
+  Every model run starts cold (`--cold`) and **CPU-only (`--cpu-only`)**, so the run record says
+  CPU-only; counted runs without it do not count as SQ4 evidence.
+- A run takes 1.5–2 h; that is longer than one command timeout, so start it in the background
+  with its output in a log file and poll the log.
 - Change only what a task needs. Interpretive choices live in `config/*.toml`, marked proposed
   until InnoBeweegLab confirms them.
 - Documentation style (docs/, commit messages): plain English, short sentences, numbers with
@@ -226,7 +243,7 @@ python -m ingestion.cli ingest-wijkscan "$env:USERPROFILE\Desktop\AppliedIT_Mast
 python -m imaging.cli analyse --workspace workspace --case euterpepark-oss
 python -m llm.cli check
 python -m llm.cli smoke local_qwen7b
-python -m experiments.cli run E2 --workspace workspace --seed 42 --cold --tag <tag>
+python -m experiments.cli run E2 --workspace workspace --seed 42 --cold --cpu-only --tag <tag>
 python -m experiments.cli summary --workspace workspace --tag <tag>
 python scripts/pilot_summary.py
 streamlit run src/ui/streamlit_app.py

@@ -37,6 +37,8 @@ capabilities = { structured_output = true, context_tokens = 100000 }
 [model.local_qwen7b]             # primary candidate: good at JSON + multilingual (Dutch)
 provider = "ollama"
 model = "qwen2.5:7b"             # 4.7 GB download
+timeout_s = 3600                 # one model call; 600 s was too short CPU-only on the i7-1165G7
+                                 # (speed test 19 Nov: E1 sections took up to 538 s, 4 hit 600 s)
 location = "local"
 base_url = "http://localhost:11434"
 num_ctx = 16384                  # M1 Pro, GPU: 4.8 GB (Ollama) at 8192, 5.1-5.2 GB at 16384
@@ -46,6 +48,8 @@ capabilities = { structured_output = true, context_tokens = 32768, reliable_toke
 [model.local_qwen3_8b]           # newer generation; a "thinking" model -> thinking switched off for drafting
 provider = "ollama"
 model = "qwen3:8b"               # 5.2 GB download
+timeout_s = 3600                 # one model call; 600 s was too short CPU-only on the i7-1165G7
+                                 # (speed test 19 Nov: E1 sections took up to 538 s, 4 hit 600 s)
 location = "local"
 num_ctx = 16384
 think = false
@@ -55,6 +59,8 @@ capabilities = { structured_output = true, context_tokens = 32768, reliable_toke
 [model.local_llama8b]            # widely used reference model
 provider = "ollama"
 model = "llama3.1:8b"            # 4.9 GB download
+timeout_s = 3600                 # one model call; 600 s was too short CPU-only on the i7-1165G7
+                                 # (speed test 19 Nov: E1 sections took up to 538 s, 4 hit 600 s)
 location = "local"
 num_ctx = 16384
 ram_gb_estimate = 7.5

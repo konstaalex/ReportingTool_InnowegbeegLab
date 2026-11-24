@@ -116,5 +116,14 @@ class TestDirtyOnlyForRunRelevantChanges(unittest.TestCase):    # P8
             self.assertTrue(provenance.git_commit().endswith("-dirty"), "a code change must make a run dirty")
 
 
+class TestCpuTimeout(unittest.TestCase):              # speed test 19 Nov
+    def test_drafting_models_allow_long_cpu_calls(self):
+        """On the CPU-only laptop one call took up to 538 s and four hit the old 600 s limit."""
+        from ingestion.config import load_config
+        models = load_config("models.toml")["model"]
+        for key in load_config("models.toml")["selection"]["drafting"]:
+            self.assertGreaterEqual(models[key].get("timeout_s", 600), 1800, key)
+
+
 if __name__ == "__main__":
     unittest.main()
