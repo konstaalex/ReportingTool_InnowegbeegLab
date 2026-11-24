@@ -47,6 +47,19 @@ description = "Staged, top-25 salient evidence (selection as retrieval), local m
 pipeline = "staged"
 selection = "top_k:25"
 
+[experiment.E4]
+description = "Staged + checker step: one revision call per section for claims the verifier rejects (D1-D6)"
+pipeline = "staged_checked"
+selection = "all"
+prompt_version = "v4"          # v4 = v3 unchanged + revise (E4) + system_raw and naive_raw (E1R)
+
+[experiment.E1R]
+description = "Naive single prompt on the raw source records behind the evidence (R1-R6), six theme sections"
+pipeline = "naive_raw"
+selection = "all"
+prompt_version = "v4"
+report_sections = ["Sporten", "Actieve mobiliteit", "Formeel spelen", "Informeel spelen", "Ontmoeten", "Uitstraling"]
+
 [experiment.SMOKE]
 description = "Plumbing check with the fake provider - NOT research output"
 unit = "section"

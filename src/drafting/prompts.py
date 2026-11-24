@@ -55,7 +55,7 @@ def evidence_id_cap(version: str) -> int | None:
         return None
 
 
-def system_prompt(version: str) -> str:
+def system_prompt(version: str, name: str = "system") -> str:
     rules = load_config("reference/writing_rules.toml")
-    return render(version, "system", audience=rules["audience"], writing_rules=writing_rules_text(),
+    return render(version, name, audience=rules["audience"], writing_rules=writing_rules_text(),
                   max_ids=evidence_id_cap(version) or "")

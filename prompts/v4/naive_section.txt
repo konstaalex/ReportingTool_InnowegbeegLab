@@ -1,0 +1,16 @@
+Onderdeel: resultaten voor het thema "$section" in $case_label.
+
+Schrijf 6 tot 12 beweringen, verdeeld over 3 of 4 alinea's (veld "paragraph": 1 tot en met 4), in deze volgorde:
+- alinea 1: wat de kaarten en data laten zien, met de getoetste RIVM-vuistregel als die er is;
+- alinea 2: wat de experts zagen (scores, opmerkingen, observaties tijdens de wandeling);
+- alinea 3: wat bewoners en stakeholders aangeven (cijfers per groep en wat vaak genoemd wordt);
+- alinea 4: hoe de perspectieven zich tot elkaar verhouden; sluit af met precies één conclusie.
+Sla een alinea over als er geen bewijsstukken voor zijn. Geen aanbevelingen.
+
+Niet beschikbaar voor dit onderdeel (noem deze niet als feit):
+$unavailable
+
+Bewijsstukken:
+$evidence
+
+JSON-schema: {"claims": [{"text": "...", "type": "bevinding|interpretatie|conclusie", "evidence_ids": ["..."], "paragraph": 1}]}

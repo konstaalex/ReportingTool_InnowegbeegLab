@@ -239,6 +239,7 @@ class OpenAICompatibleProvider(_Base):
 
 
 _ID_RE = re.compile(r"\[([XBDNC]-[A-Z]{2}-\d{2})\]\s*\([^)]*\)\s*(.+)")
+_RAW_ROW_RE = re.compile(r"^\|\s*([0-9a-f]{12})\s*\|(.+)\|$")      # E1R: a table row with its record id
 
 
 class FakeProvider(_Base):
@@ -262,7 +263,19 @@ class FakeProvider(_Base):
             payload = {"label": "partial", "zinnen": [1], "conflict": False, "reden": "[FAKE] testoordeel"}
             text = json.dumps(payload, ensure_ascii=False)
             return GenerationResult(text=text, parsed=payload, provider="fake", model="fake")
-        lines = [m for m in (_ID_RE.search(l) for l in prompt.splitlines()) if m]
+        pattern = _RAW_ROW_RE if request.task == "naive_raw" else _ID_RE
+        lines = [m for m in (pattern.search(l) for l in prompt.splitlines()) if m]
+        if request.task == "revise":                 # withdraw the first rejected claim, reword the others
+            payload = {"claims": []}
+            for i, cid in enumerate(re.findall(r"^claim_id: (\S+)", prompt, re.M)):
+                withdraw = i == 0 or not lines
+                payload["claims"].append({
+                    "claim_id": cid, "uitkomst": "ingetrokken" if withdraw else "geherformuleerd", "type": "bevinding",
+                    "text": "" if withdraw else lines[0].group(2).strip(),
+                    "evidence_ids": [] if withdraw else [lines[0].group(1)]})
+            text = json.dumps(payload, ensure_ascii=False)
+            return GenerationResult(text=text, parsed=payload, provider="fake", model="fake",
+                                    input_tokens=len(prompt) // 4, output_tokens=len(text) // 4)
         claims = []
         for m in lines[:4]:
             eid, stmt = m.group(1), m.group(2).strip()

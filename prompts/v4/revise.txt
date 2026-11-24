@@ -1,0 +1,16 @@
+Onderdeel: herziening van beweringen voor "$section" in $case_label.
+
+Een automatische controle keurde de beweringen hieronder af. Bij elke bewering staat waarom. Behandel elke bewering apart en kies precies één uitkomst (veld "uitkomst"):
+- "verwijzing_hersteld": de tekst klopt, maar de verwijzing niet. Laat de tekst staan en geef de juiste id's.
+- "getal_hersteld": een getal klopt niet. Vervang het door het getal dat letterlijk in het aangehaalde bewijsstuk staat.
+- "geherformuleerd": schrijf de bewering zo dat zij alleen zegt wat het aangehaalde bewijsstuk zegt.
+- "ingetrokken": geen enkel bewijsstuk hieronder steunt de bewering. Laat de tekst dan leeg en geef geen id's.
+Voeg geen nieuwe beweringen toe. Neem "claim_id" en "type" ongewijzigd over. Verwijs alleen naar bewijsstuk-id's die hieronder staan.
+
+Afgekeurde beweringen:
+$claims
+
+Bewijsstukken:
+$evidence
+
+JSON-schema: {"claims": [{"claim_id": "...", "uitkomst": "verwijzing_hersteld|getal_hersteld|geherformuleerd|ingetrokken", "text": "...", "type": "bevinding|interpretatie|conclusie", "evidence_ids": ["..."]}]}

@@ -246,8 +246,9 @@ class Workspace:
             if problems:
                 raise ValueError("; ".join(problems))
             provider = get_provider(model_id)
-        draft = run_pipeline(pack, cfg, provider)
-        verify_section(draft, pack, evidence_index(packs))
+        index = evidence_index(packs)
+        draft = run_pipeline(pack, cfg, provider, index)
+        verify_section(draft, pack, index)
         self.save_draft(draft)
         current = self.p("reviews", case_id, f"{self._section_slug(section)}.json")
         if replace_review or not current.exists():

@@ -29,7 +29,7 @@ from typing import Optional
 
 from app.services import Workspace
 from drafting.models import now_iso
-from drafting.pipelines import PipelineConfig, run_pipeline
+from drafting.pipelines import RAW_PIPELINES, PipelineConfig, run_pipeline, verification_view
 from evidence.builder import evidence_index
 from llm.providers import OllamaProvider
 from llm.registry import get_provider, validate_model_config
@@ -44,7 +44,10 @@ METRICS = ("grounded_rate", "weak_rate", "unsupported_rate", "citation_validity"
 # per full report: from the run's own checks (totals) and from the comparison with the original
 REPORT_METRICS = ("n_claims", "grounded_rate", "weak_rate", "unsupported_rate", "wall_s", "model_calls",
                   "tokens_in", "tokens_out", "model_load_s", "prompt_tokens_per_s", "output_tokens_per_s",
-                  "model_peak_mb")
+                  "model_peak_mb",
+                  # E4 only (D4, D6): the checker step
+                  "unsupported_rate_before", "withdrawal_rate", "revision_calls", "revision_minutes",
+                  "revision_sent_back", "revision_withdrawn", "revision_revised", "revision_still_unsupported")
 EVAL_METRICS = ("structure", "coverage", "ceiling", "coverage_of_supportable", "numbers_agree_rate",
                 "possible_number_conflicts", "addition_rate", "figures")
 
@@ -241,6 +244,7 @@ def _run_sections(ws: Workspace, d: dict, cases: list[str], sections: list[str],
         for case_id in cases:
             packs = ws.evidence(case_id)
             idx = evidence_index(packs)
+            store = ws.store() if d["pipeline"] in RAW_PIPELINES else None
             for section in sections:
                 for seed in seeds:
                     cfg = PipelineConfig(pipeline_id=d["pipeline"], prompt_version=d["prompt_version"],
@@ -250,8 +254,8 @@ def _run_sections(ws: Workspace, d: dict, cases: list[str], sections: list[str],
                                          include_quotes=d.get("include_quotes", True))
                     t0 = time.perf_counter()
                     try:
-                        draft = run_pipeline(packs[section], cfg, provider)
-                        checks = verify_section(draft, packs[section], idx)
+                        draft = run_pipeline(packs[section], cfg, provider, idx, store)
+                        checks = verify_section(draft, *verification_view(packs[section], cfg, idx, store))
                         ws.save_draft(draft)
                         err = draft.errors
                     except Exception as exc:  # noqa: BLE001 - record and continue

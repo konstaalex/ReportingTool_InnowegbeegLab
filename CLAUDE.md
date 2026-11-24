@@ -77,7 +77,8 @@ test cases): `docs/analysis/`.
 Key facts:
 
 - Pipelines (`src/drafting/pipelines.py`): `template` (E0, no model), `naive` (one prompt per
-  section), `staged` (findings per perspective: data, expert, residents; then a synthesis).
+  section), `staged` (findings per perspective: data, expert, residents; then a synthesis),
+  `staged_checked` (E4) and `naive_raw` (E1R, `src/drafting/raw_records.py`).
   Conclusies and Aanleiding always use their own single-call prompt.
 - The verifier (`src/verification/checks.py`) is deterministic. Per claim: grounded / weak /
   unsupported, with named flags (no_citation, invalid_citation, unsupported_number,
@@ -85,7 +86,8 @@ Key facts:
   theme_mismatch). It flags, never rewrites.
 - Prompts are versioned files in `prompts/<version>/`. **v3 is the default** (v2 + at most 6
   evidence ids per claim, also as `maxItems` in the JSON schema). v1 and v2 are frozen for
-  the reproducibility of earlier runs. **Never edit a released prompt version: make a new one.**
+  the reproducibility of earlier runs. v4 = v3 unchanged + the E4 and E1R prompts; only E4 and E1R
+  use it. **Never edit a released prompt version: make a new one.**
 - Models (`config/models.toml`): `local_qwen7b` (qwen2.5:7b, primary), `local_qwen3_8b`,
   `local_llama8b`; context window 16,384 tokens, output 1,800 (3,000 for Conclusies and
   Aanleiding). Memory limit 0.6 × 16 GB = 9.6 GB.
@@ -181,8 +183,8 @@ Deviation-log entries to add at the freeze are listed in the decisions doc.
 Done:
 
 - Tool works end to end (ingestion, evidence, staged drafting, verifier, review screen with
-  audit log, export gate). Not built: the screen for resolving unknown survey mappings; E1R;
-  E4; E3's BM25, vector and hybrid variants.
+  audit log, export gate). Not built: the screen for resolving unknown survey mappings;
+  E3's BM25, vector and hybrid variants.
 - Pilot (Mac, qwen2.5:7b, seed 42, round 2 with the 16K window): E1 26% unsupported, E2 8.5%;
   S 15% (E1), 18% (E2, GPU), 28% (E2, CPU), 27% (E0); E2 on CPU took 77 min, peak 5.5 GB.
   Findings P1–P8 in `docs/experiments/week1-pilot.md`; P7 (invented ids) and P8 (dirty flag)
@@ -224,7 +226,7 @@ whether the 10 synthetic cases join the counted runs (they can give U, time, mem
 
 ## 8. How to work in this repo
 
-- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (142 tests).
+- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (172 tests).
 - Commit code, prompts and config **before** starting a run, so its record is not `-dirty`.
 - Long runs: laptop on power, power mode "Best performance", sleep off. **At least 9 GB free
   memory at the start**: close VS Code, browsers, Teams, Outlook (the script warns below 9 GB).

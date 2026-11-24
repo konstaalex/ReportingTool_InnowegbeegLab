@@ -85,6 +85,7 @@ class SectionDraft:
     section_checks: Optional[dict] = None   # coverage gaps, repetition, metrics
     errors: list[str] = field(default_factory=list)
     config: dict = field(default_factory=dict)
+    revision: Optional[dict] = None         # E4 only: {"summary": {...}, "claims": [original + revision, ...]}
 
     def narrative(self) -> str:
         paras: dict[int, list[str]] = {}

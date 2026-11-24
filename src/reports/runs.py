@@ -21,7 +21,7 @@ from pathlib import Path
 from typing import Callable, Optional
 
 from drafting.models import SectionDraft, now_iso
-from drafting.pipelines import PipelineConfig, run_pipeline
+from drafting.pipelines import RAW_PIPELINES, PipelineConfig, run_pipeline, verification_view
 from evidence.builder import evidence_index
 from evidence.models import AANLEIDING, CONCLUSIES, GENERAL
 from ingestion.models import THEMES
@@ -65,6 +65,23 @@ def _stage_timings(stages) -> dict:
                 tot[k] += t[k]
                 seen = True
     return {k: round(v, 2) for k, v in tot.items()} if seen else {}
+
+
+REVISION_TOTALS = ("claims_before", "unsupported_before", "sent_back", "calls", "latency_s", "tokens_in",
+                   "tokens_out", "withdrawn", "revised", "still_unsupported")
+
+
+def revision_totals(drafts: list[SectionDraft]) -> dict:
+    """E4's checker step over the whole report (D4, D6); {} for every other pipeline."""
+    sums = [d.revision["summary"] for d in drafts if d.revision]
+    if not sums:
+        return {}
+    tot = {f"revision_{k}": round(sum(s[k] for s in sums), 3) for k in REVISION_TOTALS}
+    tot["revision_minutes"] = round(tot["revision_latency_s"] / 60, 2)
+    if tot["revision_claims_before"]:
+        tot["unsupported_rate_before"] = round(tot["revision_unsupported_before"] / tot["revision_claims_before"], 3)
+        tot["withdrawal_rate"] = round(tot["revision_withdrawn"] / tot["revision_claims_before"], 3)
+    return tot
 
 
 def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str = "staged",
@@ -113,11 +130,14 @@ def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str
     (out / "drafts").mkdir(parents=True, exist_ok=True)
     packs = ws.evidence(case_id)
     index = evidence_index(packs)
+    raw = pipeline in RAW_PIPELINES
+    store = ws.store() if raw else None
+    wanted = [s for s in (sections or REPORT_SECTIONS) if not raw or s in THEMES]     # R6: raw = theme sections only
     drafts: dict[str, SectionDraft] = {}
     per_section: dict[str, dict] = {}
     t_run = time.perf_counter()
     with MemoryMonitor(base_url=ollama_url) as monitor:
-        for sec in sections or REPORT_SECTIONS:
+        for sec in wanted:
             pack = packs.get(sec)
             if pack is None or not pack.items:
                 per_section[sec] = {"skipped": "geen bewijsstukken"}
@@ -130,12 +150,12 @@ def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str
                                  include_quotes=include_quotes)
             t0 = time.perf_counter()
             try:
-                draft = run_pipeline(pack, cfg, provider)
+                draft = run_pipeline(pack, cfg, provider, index, store)
             except Exception as exc:  # noqa: BLE001 - a failed section is recorded, never dropped
                 per_section[sec] = {"error": f"{type(exc).__name__}: {exc}", "wall_s": round(time.perf_counter() - t0, 2)}
                 continue
             wall = time.perf_counter() - t0
-            verify_section(draft, pack, index)
+            verify_section(draft, *verification_view(pack, cfg, index, store))
             (out / "drafts" / f"{_slug(sec)}.json").write_text(json.dumps(draft.to_dict(), indent=2, ensure_ascii=False),
                                                                 encoding="utf-8")
             drafts[sec] = draft
@@ -143,11 +163,13 @@ def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str
             per_section[sec] = {
                 "draft_id": draft.draft_id, "n_claims": len(draft.claims), "errors": draft.errors,
                 "grounded_rate": m.get("grounded_rate"), "unsupported_rate": m.get("unsupported_rate"),
-                "coverage_salient": m.get("coverage_salient"), "wall_s": round(wall, 2),
+                # salience is a property of evidence items: it says nothing about a draft on raw records
+                "coverage_salient": None if raw else m.get("coverage_salient"), "wall_s": round(wall, 2),
                 "model_calls": sum(1 for s in draft.stages if s.provider != "none"),
                 "tokens_in": sum(s.input_tokens or 0 for s in draft.stages),
                 "tokens_out": sum(s.output_tokens or 0 for s in draft.stages),
                 "timings": _stage_timings(draft.stages),
+                **({"revision": draft.revision["summary"]} if draft.revision else {}),
             }
         drafting_s = round(time.perf_counter() - t_run, 1)
     resources = monitor.summary()
@@ -183,6 +205,7 @@ def generate_report_run(ws, case_id: str, model_id: Optional[str], pipeline: str
             **({"output_tokens_per_s": round(tokens_out / timings["eval_s"], 1)} if timings.get("eval_s") else {}),
             "model_peak_mb": resources.get("model_peak_mb"),
             "within_memory_limit": resources.get("within_limit"),
+            **revision_totals(list(drafts.values())),
             "failed_sections": [s for s, v in per_section.items() if v.get("error") or v.get("errors")],
         },
         "resources": resources,
