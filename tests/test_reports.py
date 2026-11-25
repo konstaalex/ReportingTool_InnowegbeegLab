@@ -189,6 +189,25 @@ class TestEvaluation(unittest.TestCase):
         self.assertEqual(f["photo"], {"reference": 1, "generated": 0, "matched": 0})
         self.assertEqual(f["recommendations_chapter"]["reference"], 1)
 
+    def test_ids_are_not_numbers(self):
+        from reports.evaluate import numbers
+        self.assertEqual(numbers("Experts geven 3,4 (X-AB-01, B-ON-12)."), {3.4})
+        self.assertEqual(numbers("Het aandeel is 52% [0a1b2c3d4e5f] [123abcdef456] [123456789012]."), {52.0})
+        self.assertEqual(numbers("X-AB-01: 7 van de 18"), {7.0, 18.0})       # the real numbers next to an id stay
+        self.assertEqual(numbers("De A-weg telt 99 plekken in 2024."), {99.0})
+
+    def test_an_id_cannot_make_a_number_conflict_or_agreement(self):
+        from reports.evaluate import evaluate
+        ref = {"sections": {"Sporten": "De experts geven de sportplekken in de buurt gemiddeld een 1 als cijfer."}}
+        text = "De experts geven de sportplekken in de buurt gemiddeld een laag cijfer"
+        plain = evaluate(ref, {"Sporten": [f"{text}."]}, [text])["summary"]["content"]
+        for tail in ("(X-AB-01).", "(X-AB-07).", "(0a1b2c3d4e5f)."):
+            withid = evaluate(ref, {"Sporten": [f"{text} {tail}"]}, [text])["summary"]["content"]
+            for k in ("numbers_agree", "possible_number_conflicts", "coverage"):
+                self.assertEqual(withid[k], plain[k], (tail, k))
+        real = evaluate(ref, {"Sporten": [f"{text}, een 5 (X-AB-01)."]}, [text])["summary"]["content"]
+        self.assertEqual(real["possible_number_conflicts"], 1)                # a real difference is still found
+
     def test_deterministic_and_ceiling_independent_of_the_draft(self):
         from reports.evaluate import evaluate
         a = evaluate(REFERENCE, GENERATED, EVIDENCE)["summary"]["content"]

@@ -53,6 +53,7 @@ from typing import Iterable, Optional
 from evidence.models import AANLEIDING, CONCLUSIES, GENERAL
 from ingestion.config import load_config
 from ingestion.models import THEMES
+from verification.checks import without_ids
 
 # Thresholds for the word-overlap labels. Initial values were set on 89 statements of the
 # Oss report (Resultaten: algemeen, Sporten, Actieve mobiliteit, Formeel spelen) that the
@@ -77,6 +78,7 @@ maar want omdat hun hen zij ze wij we je u hij zich haar over uit naar tot toe o
 na waar wat wie welke hoe dus al alle elk ieder iedere andere ander eigen even per sinds mits zoals
 namelijk daarnaast hierbij hiervoor waarbij waarvan daarbij daarom echter vooral mede ten ter des den
 the and één twee drie vier vijf zes geeft geven gaat gaan komt komen""".split())
+_DIGIT_RECORD_ID = re.compile(r"(?<!\w)\d{12}(?!\w)")      # a record id that happens to have no letter
 _NUM = re.compile(r"(?<![\w.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?(%?)")
 _SENT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9'\"(‘“])")
 _CAPTION = re.compile(r"^(Afbeelding|Figuur)\s+(\d+)\s*:?\s*(.*)$")
@@ -106,8 +108,9 @@ def terms(text: str) -> set[str]:
 
 
 def numbers(text: str) -> set[float]:
+    """The numbers in a text. Evidence and record ids are not numbers ("X-AB-01" is not 1)."""
     out = set()
-    for m in _NUM.finditer(text or ""):
+    for m in _NUM.finditer(_DIGIT_RECORD_ID.sub(" ", without_ids(text))):
         whole, dec = m.group(1).replace(".", ""), m.group(2)
         v = float(f"{whole}.{dec}") if dec else float(whole)
         if 1900 <= v <= 2100 and not m.group(3):      # years are not findings
