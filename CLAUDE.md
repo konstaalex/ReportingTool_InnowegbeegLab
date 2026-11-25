@@ -2,7 +2,7 @@
 
 Read this first. It is the hand-over from the claude.ai project "Innoweegbeg" (planning,
 research and documents) to Claude Code on Alex's laptop (running things). Last updated
-19 November 2026 (evening, after the Windows speed test). When something here changes, update this file in the same commit.
+25 November 2026 (freeze). When something here changes, update this file in the same commit.
 
 ## 1. The project in five lines
 
@@ -109,7 +109,7 @@ Secondary: number conflicts, numbers found back, grounded/weak rates, time, peak
 failed sections.
 
 **Conditions.** E0 template · E1 (A) single prompt · E1R single prompt on raw records ·
-E2 (B) staged · E3 staged with evidence selection (top-25, BM25, vector, hybrid) ·
+E2 (B) staged · E3 staged with evidence selection (top-25, BM25) ·
 E4 (C) staged + checker step · E5 multi-agent, not built · E6 hosted model, only with access ·
 E7 final configuration · C0 Microsoft 365 Copilot used by hand (protocol in the hypotheses
 doc §4b).
@@ -173,60 +173,66 @@ E1R (raw-records baseline) = E1 with the evidence layer removed:
 
 Also accepted: the five (P) values as written (MMD 5 pp, 2,000 resamples, κ ≥ 0.61, F2 8 h,
 30 sampled statements for C0); all counted runs CPU-only on this laptop; check V1 (GPU vs CPU)
-dropped. Stage-2 scope (whether to drop vector and hybrid) is decided after the speed test,
-before the freeze.
+dropped. Stage 2 compares all, top-25 and BM25; vector and hybrid are dropped (25 Nov).
 
 Deviation-log entries to add at the freeze are listed in the decisions doc.
 
-## 7. Status and next steps (19 Nov)
+## 7. Status and next steps (25 Nov)
 
 Done:
 
 - Tool works end to end (ingestion, evidence, staged drafting, verifier, review screen with
-  audit log, export gate). Not built: the screen for resolving unknown survey mappings;
-  E3's BM25, vector and hybrid variants.
+  audit log, export gate). Not built: the screen for resolving unknown survey mappings; E3's BM25.
 - Pilot (Mac, qwen2.5:7b, seed 42, round 2 with the 16K window): E1 26% unsupported, E2 8.5%;
   S 15% (E1), 18% (E2, GPU), 28% (E2, CPU), 27% (E0); E2 on CPU took 77 min, peak 5.5 GB.
-  Findings P1–P8 in `docs/experiments/week1-pilot.md`; P7 (invented ids) and P8 (dirty flag)
+  Findings P1-P8 in `docs/experiments/week1-pilot.md`; P7 (invented ids) and P8 (dirty flag)
   are fixed (`tests/test_pilot_fixes.py`).
-- **Windows speed test, 19 Nov** (tag `pilot-windows2`, commit `5283ecb`, 14:07–16:40): E0
-  0.1 min; E1 68.9 min with 4 of 8 sections failed; E2 82.3 min with 1 failed (Conclusies).
-  Every failure was the 600 s per-call timeout; finished E1 sections took 219–538 s. Fixed:
-  `timeout_s = 3600` for the three drafting models in `config/models.toml`. True time per report
-  is therefore about 80–95 min (E1) and 85–95 min (E2): under 3 h, so stages 2 and 3 keep all
-  six themes, and F2 (8 h) passes easily. Model memory peaked at 8.3–8.9 GB (sum of the Ollama
-  processes; Ollama itself reports 5.7 GB): under the 9.6 GB limit, but with little margin.
-  System memory hit 15.9 of 15.7 GB because ~7.5 GB was in use before the run, so Windows paged.
-  Aanleiding produced nothing: it needs "Projectcontext" researcher notes
-  (`Onderzoekersnotities.xlsx`), which are missing. E0 on Windows equals E0 on the Mac (72 claims,
-  0% unsupported, 27% coverage).
+- Windows speed test, 19 Nov (tag `pilot-windows2`): E1 68.9 min with 4 of 8 sections failed, E2
+  82.3 min with 1 failed. Every failure was the 600 s per-call timeout; now 3600 s. Model memory
+  peaked at 8.1 GiB (E1) and 8.7 GiB (E2) as the sum of the Ollama processes (Ollama itself reports
+  5.7): under the 9.6 limit with little margin. System memory peaked at 15.5 and 15.4 of 15.7 GiB.
+  (The first version of this file mixed GB and GiB: "15.9 of 15.7".)
+- Check run, 24 Nov (tag `pilot-windows3`, commit `e1a27b4`, `--cold --cpu-only`): no failed
+  sections; E1 111.7 min (its time is unusable: about 80 min on battery), E2 92.1 min; peak 7.6 and
+  7.1 GiB. The same seed gave other output lengths than on 19 Nov (cause unknown).
+- E4 and E1R built per section 6 (`7aa977e`), accepted 25 Nov. Verifier and scorer no longer read the
+  digits of ids as numbers (`565eb45`, `7428245`); U of E2 in the check run 19.5% -> 12.2%, E1 unchanged.
+- Smoke runs, 25 Nov (tag `pilot-e4e1r`, commit `7428245`, seed 42, no failed sections): E4 130.5 min
+  (U 10.7% before and 6.1% after revision, S 23.3%, 42 min extra for 4 revision calls, peak
+  8.3 GiB); E1R 97.7 min (six themes, U 38.1%, peak 7.8 GiB). E1R prompts 7,157-12,615 tokens: all fit
+  in 16K. E1R's number conflicts and numbers found back were not looked at before the freeze.
+- Aanleiding is not drafted: it needs "Projectcontext" researcher notes (`Onderzoekersnotities.xlsx`),
+  which are missing. A report has 8 sections (E1R: 6).
 
-Next, in order:
+Plan to 3 December (stop at every GATE and ask Alex):
 
-1. Done: the speed test (above). One check run with the new timeout and `--cpu-only` is
-   advised before the freeze: `scripts\windows_timing.ps1 -SkipPull -SkipIngest -Tag pilot-windows3`
-   (all sections must finish).
-2. Stage-2 scope: proposed to drop vector and hybrid (keep all, top-25, BM25); Alex decides
-   before the freeze. Also before the freeze: decide whether to restore the researcher notes
-   (Aanleiding), since inputs must be fixed for all conditions.
-3. Build E4 and E1R per §6, with tests on synthetic data; count E1R tokens (R4).
-4. Ask the second rater; one labelling session for the S-scorer labels (89 statements), the
-   50 verifier verdicts, and the blind E2/E4 support check.
-5. Copy the decisions into `hypotheses-and-thresholds.md`, fill its deviation log, commit, tag
-   `freeze-1`.
-6. Counted runs: stage 1 → 2 → 3, one or two reports per night; then F1–F3 runs of the final
-   configuration and Copilot C0.
-7. Stakeholder laptop by 3 Dec: get its specs, an offline install package, written agreement
-   that data stays local and pseudonymised, a dry run by 1–2 Dec.
-8. User sessions with 4–5 InnoBeweegLab researchers, 7–18 Dec (rubric, SUS, NASA-TLX,
-   interview guide, consent forms, editing time). Analysis in January.
+1. Wed 25 (planned Thu 26): freeze. `hypotheses-and-thresholds.md` and its deviation log updated. GATE, then commit,
+   tag `freeze-1`, push the tag.
+2. Thu 26 night - Sun 29: stage 1 counted runs, untagged, `--cold --cpu-only`: E1, E2, E4, E1R on Oss;
+   seed 42 for all four, then 43, then 44 (12 reports, about 7 h per seed). After each report one line
+   in `workspace\stage1-progress.md`. **No commit on the checkout that runs until all 12 are done**
+   (a new commit changes `code_version`). Then
+   `python scripts/compare_conditions.py --workspace workspace --freeze freeze-1 --out workspace/stage1-results.md`.
+   GATE: results and the winner by the pre-registered rule.
+3. Mon 30 - Tue 1 Dec: offline package in `%USERPROFILE%\Desktop\InnoBeweegLab_offline\` (Python 3.11
+   installer, wheels, Ollama installer, model files, git archive of the freeze commit,
+   `install_offline.ps1`, `DEMO.md`), without research data; dry run in a fresh folder plus the F5
+   command once (stage-1 winner, seed 42). GATE.
+4. 3 Dec: stakeholder laptop (specs, written agreement that data stays local and pseudonymised, F5).
 
-Open decisions: build the unknown-mapping screen or scope it out; E6 (Azure EU) or drop it;
-whether the 10 synthetic cases join the counted runs (they can give U, time, memory, not S).
+After 3 December: build BM25 and freeze again for stage 2 (all, top-25, BM25; six themes) and stage 3
+(models); F1-F3 runs of the final configuration; Copilot C0; one labelling session with the second
+rater (89 statements, 50 verifier verdicts, blind E2/E4 support check); user sessions with 4-5
+InnoBeweegLab researchers, 7-18 Dec (rubric, SUS, NASA-TLX, interview guide, consent forms, editing
+time). Analysis in January.
+
+Open decisions: the remaining (P) values (H7, H8, H9, F3); build the unknown-mapping screen or scope
+it out; E6 (Azure EU) or drop it; whether the 10 synthetic cases join the counted runs (they can give
+U, time, memory, not S).
 
 ## 8. How to work in this repo
 
-- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (179 tests).
+- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (189 tests).
 - Commit code, prompts and config **before** starting a run, so its record is not `-dirty`.
 - Long runs: laptop on power, power mode "Best performance", sleep off. **At least 9 GB free
   memory at the start**: close VS Code, browsers, Teams, Outlook (the script warns below 9 GB).
