@@ -14,7 +14,7 @@ from drafting.models import DraftClaim, SectionDraft  # noqa: E402
 from evidence.builder import build_case_evidence, evidence_index  # noqa: E402
 from evidence.models import Evidence  # noqa: E402
 from ingestion.buurtscan import ingest_buurtscan_folder  # noqa: E402
-from verification.checks import parse_numbers, style_flags, verify_claim, verify_section  # noqa: E402
+from verification.checks import parse_numbers, style_flags, verify_claim, verify_section, without_ids  # noqa: E402
 
 CASE = "testwijk-teststad"
 
@@ -117,6 +117,37 @@ class TestVerifier(unittest.TestCase):
         r = self.v("52% van de bewoners vindt sport belangrijk.", ["B-SP-01"])
         self.assertEqual(r["status"], "unsupported")
         self.assertEqual(r["numbers"]["unsupported"], ["52"])
+
+    def test_ids_in_the_text_are_not_numbers(self):
+        for text in ("De experts geven gemiddeld 3,0 (X-SP-01).", "De experts geven gemiddeld 3,0 [X-SP-01].",
+                     "Volgens X-SP-01 geven de experts gemiddeld 3,0.", "Experts: 3,0 (X-AB-01, B-ON-12, D-FS-103)."):
+            r = self.v(text, ["X-SP-01"])
+            self.assertNotIn("unsupported_number", self.codes(r), text)
+            self.assertEqual(r["numbers"]["in_text"], ["3,0"], text)
+
+    def test_a_wrong_number_next_to_an_id_is_still_flagged(self):
+        for text, wrong in (("De experts geven gemiddeld 3,4 (X-SP-01).", "3,4"), ("X-SP-01: 3,4 gemiddeld.", "3,4"),
+                            ("Gemiddeld 3,0 (X-SP-01), en 7 keer genoemd.", "7"), ("Gemiddeld 3,4 X-SP-01.", "3,4")):
+            r = self.v(text, ["X-SP-01"])
+            self.assertEqual((r["status"], r["numbers"]["unsupported"]), ("unsupported", [wrong]), text)
+
+    def test_record_ids_in_the_text_are_not_numbers(self):                        # E1R
+        self.idx["0a1b2c3d4e5f"] = _ev("0a1b2c3d4e5f", kind="raw_record", statement="Gemiddelde: 3,0")
+        self.idx["123456789012"] = _ev("123456789012", kind="raw_record", statement="Gemiddelde: 3,0")
+        for rid in ("0a1b2c3d4e5f", "123456789012"):
+            self.assertEqual(self.v(f"Het gemiddelde is 3,0 ({rid}).", [rid])["numbers"]["in_text"], ["3,0"])
+            self.assertEqual(self.v(f"Het gemiddelde is 3,4 ({rid}).", [rid])["numbers"]["unsupported"], ["3,4"])
+        self.assertEqual(without_ids("123456789012 inwoners"), "123456789012 inwoners")      # not cited: a number
+
+    def test_a_citation_cannot_hide_a_number(self):
+        for fake in ("52", "52%", "52 procent", "2,4"):
+            r = self.v(f"Het is {fake} van de bewoners.", ["B-SP-01", fake])
+            self.assertTrue(r["numbers"]["unsupported"], fake)
+
+    def test_text_that_only_looks_like_an_id_keeps_its_number(self):
+        for text in ("In 65-SP-99 gebieden.", "De A-weg telt 99 plekken.", "Buurt xB-SP-99.", "Code X-SP 99.",
+                     "X-SP-99m ligt ver, 99 meter."):
+            self.assertIn("99", self.v(text, ["X-SP-01"])["numbers"]["unsupported"], text)
 
     def test_decimal_numbers(self):
         self.assertEqual(parse_numbers("gemiddeld 3,0 en 1.500 meter, 57,8%"), [3.0, 1500.0, 57.8])

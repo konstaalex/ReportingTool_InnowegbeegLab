@@ -25,6 +25,9 @@ SEVERITY_ORDER = {"unsupported": 3, "weak": 2, "style": 1}
 
 # Dutch numbers: 3,4 | 45 | 1.500 (thousands) | 57,8
 _NUM_RE = re.compile(r"(?<![\w.,])(\d{1,3}(?:\.\d{3})+|\d+)(?:,(\d+))?(?![\w])")
+# Ids a model repeats in its text are citations, not findings: "X-SP-01" must not read as the number 1.
+_EVIDENCE_ID_RE = re.compile(r"(?<!\w)[XBDNCPO][-\u2010-\u2013][A-Z]{2}[-\u2010-\u2013]\d{2,}(?!\w)")
+_RECORD_ID_RE = re.compile(r"(?<!\w)(?=[0-9a-f]*[a-f])[0-9a-f]{12}(?!\w)")     # with a letter: 12 digits can be a number
 _RESIDENT_RE = re.compile(r"\b(bewoners?|inwoners?|respondenten?|buurtbewoners?|ondervraagden)\b", re.I)
 _EXPERT_RE = re.compile(r"\b(experts?|expertwandeling|deskundigen)\b", re.I)
 _NORM_RE = re.compile(r"\b(rivm|vuistregels?)\b", re.I)
@@ -64,6 +67,16 @@ def parse_numbers(text: str) -> list[float]:
         whole = whole.replace(".", "")
         out.append(float(f"{whole}.{dec}") if dec else float(whole))
     return out
+
+
+def without_ids(text: str, cited: Iterable[str] = ()) -> str:
+    """The text without evidence and record ids. A record id of 12 digits without a letter is only
+    removed when the claim cites it; anything else that is cited stays, so a citation cannot hide a number."""
+    text = _RECORD_ID_RE.sub(" ", _EVIDENCE_ID_RE.sub(" ", text or ""))
+    for i in cited:
+        if re.fullmatch(r"\d{12}", i):
+            text = re.sub(rf"(?<!\w){i}(?!\w)", " ", text)
+    return text
 
 
 def _walk_numbers(obj) -> Iterable[float]:
@@ -159,7 +172,7 @@ def verify_claim(claim: DraftClaim, section: str, index: dict[str, Evidence],
                           f"Verwijst naar onbekende bewijsstukken: {', '.join(invalid)}."))
 
     # numbers
-    nums_text = [(m.group(0), m.group(2) is not None) for m in _NUM_RE.finditer(claim.text)]
+    nums_text = [(m.group(0), m.group(2) is not None) for m in _NUM_RE.finditer(without_ids(claim.text, claim.evidence_ids))]
     pool = evidence_numbers(cited)
     unsupported_nums = []
     for raw, has_dec in nums_text:

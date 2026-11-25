@@ -226,7 +226,7 @@ whether the 10 synthetic cases join the counted runs (they can give U, time, mem
 
 ## 8. How to work in this repo
 
-- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (172 tests).
+- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (177 tests).
 - Commit code, prompts and config **before** starting a run, so its record is not `-dirty`.
 - Long runs: laptop on power, power mode "Best performance", sleep off. **At least 9 GB free
   memory at the start**: close VS Code, browsers, Teams, Outlook (the script warns below 9 GB).
