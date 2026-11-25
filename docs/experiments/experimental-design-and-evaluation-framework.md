@@ -25,7 +25,7 @@ It consolidates and explains material that is kept in more detail in the reposit
 | `docs/experiments/week1-pilot.md`, `docs/experiments/first-llm-pilot-experiments.md` | the pilot that tested and sized this framework |
 
 **Status.** The framework is complete and fixed in advance. The pilot (3–4 November) has run on
-it; the counted runs start after the freeze (git tag `freeze-1`, planned 13 November 2026).
+it; the counted runs start after the freeze (git tag `freeze-2`, 25 November 2026).
 Points marked **(P)** are proposals still to be confirmed before the freeze.
 
 No research data is in this document. The original Oss report is confidential: it is used as the
@@ -140,7 +140,7 @@ report.
 |---|---|---|---|
 | **U** unsupported-claim rate | claims with no valid citation, or with a number not present in the cited evidence, over all claims | `verification/checks.py` | primary: traceability (NFR1, FR5, FR6) |
 | **S** coverage of what the data supports | statements of the original report that the evidence can support *and* the draft covers, over the supportable statements | `reports/evaluate.py` | primary: usefulness against the human report |
-| Ceiling | share of the original's 250 statements the evidence can support at all | `reports/evaluate.py` | context: separates data limits from model limits |
+| Ceiling | share of the original's statements the evidence can support at all: 128 of 239 (53.6%) without Aanleiding | `scripts/compare_conditions.py` | context: separates data limits from model limits |
 | Numbers found back / number conflicts | numbers of the original present in the draft; matched statements whose numbers differ | `reports/evaluate.py` | secondary: factual accuracy |
 | Grounded / weak rate, citation validity | verifier labels per claim (weak = e.g. over-generalisation, attribution mismatch, theme mismatch) | `verification/checks.py` | secondary |
 | Time per report; load, prompt and output speed | wall-clock time and the model server's own timings | run `totals` | cost (SQ3), feasibility (SQ4) |

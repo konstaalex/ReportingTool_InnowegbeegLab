@@ -18,7 +18,7 @@ the 9.6 GB limit.
 | Model server | Ollama on the same machine (`localhost:11434`); nothing sent over the internet |
 | Model | qwen2.5:7b, prompt version v2, temperature 0.2, seed 42 |
 | Case | `euterpepark-oss`, re-imported 3 Nov 13:50 with the current code; maps measured in code |
-| Scoring | against the original report: 250 statements (recommendations excluded by design) |
+| Scoring | against the original report: 250 statements (recommendations excluded by design). The pilot figures in this document include Aanleiding; counted runs leave it out (239 statements, ceiling 53.6%) |
 | Start | every model run starts cold: Ollama unloads all models first, so load time is included |
 
 Two rounds:

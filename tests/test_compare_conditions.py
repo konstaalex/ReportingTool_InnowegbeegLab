@@ -17,7 +17,7 @@ CASE, COMMIT = "testwijk", "abc1234"
 # section, label, evidence label, numbers in the original, numbers in the draft, numbers differ
 LABELS = [["Sporten", "covered", "covered", "3 5", "3", "False"], ["Sporten", "missing", "partial", "7", "8", "True"],
           ["Sporten", "covered", "missing", "", "", "False"], ["conclusies", "partial", "covered", "", "", "False"],
-          ["aanbevelingen", "covered", "covered", "9", "9", "False"]]
+          ["aanbevelingen", "covered", "covered", "9", "9", "False"], ["aanleiding", "missing", "covered", "4", "", "False"]]
 OK = [["grounded", "unsupported"], ["grounded", "weak"]]
 
 
@@ -57,7 +57,7 @@ class TestLoading(unittest.TestCase):
         self.assertEqual(cc.rate(cc.pooled_claims(runs)), 0.25)
         self.assertEqual(cc.rate(cc.pooled_claims(runs, {"Sporten"})), 0.5)
         ps = cc.pooled_statements(runs)
-        self.assertEqual(cc.s_rate(ps), 0.5)                   # (1 + 0 + 0.5) / 3 supportable; recommendations left out
+        self.assertEqual(cc.s_rate(ps), 0.5)                   # (1 + 0 + 0.5) / 3 supportable; the last two are not scored
         self.assertEqual(cc.s_rate(cc.pooled_statements(runs, {"conclusies"})), 0.5)
         self.assertAlmostEqual(cc.found_rate(ps), 1 / 3)       # 3 of {3, 5, 7}
         self.assertEqual(cc.conflicts(ps), 1)
@@ -104,7 +104,7 @@ class TestLoading(unittest.TestCase):
         data = self.load(cc.CONDITIONS, cc.SEEDS)
         md = cc.render(data, "t")
         self.assertEqual(md, cc.render(data, "t"))
-        for part in ("six themes", "**winner: E1**", "not the final verdict", "| E4 − E2 (H3) | all | U | 25.0 | 25.0 |"):
+        for part in ("six themes", "Ceiling: 3 of 4 statements (75.0%)", "**winner: E1**", "not the final verdict", "| E4 − E2 (H3) | all | U | 25.0 | 25.0 |"):
             self.assertIn(part, md)
         self.assertNotIn("geheim", md)
 
@@ -121,12 +121,42 @@ class TestRules(unittest.TestCase):
         self.assertEqual(v(0.08, (-0.01, 0.17), False), "inconclusive")
 
     def test_bootstrap_is_fixed_and_close_to_theory(self):
-        x, y = {"a": [1] * 10 + [0] * 90, "b": [1] * 5 + [0] * 45}, {"a": [1] * 40 + [0] * 60, "b": [1] * 20 + [0] * 30}
+        x = {"a": [[1] * 10 + [0] * 90], "b": [[1] * 5 + [0] * 45]}         # one cluster per section: plain bootstrap
+        y = {"a": [[1] * 40 + [0] * 60], "b": [[1] * 20 + [0] * 30]}
         ci = cc.bootstrap_u(x, y)
         self.assertEqual(ci, cc.bootstrap_u(x, y))
         se = (0.1 * 0.9 / 150 + 0.4 * 0.6 / 150) ** 0.5                     # normal approximation
         self.assertAlmostEqual(ci[0], -0.3 - 1.96 * se, delta=0.02)
         self.assertAlmostEqual(ci[1], -0.3 + 1.96 * se, delta=0.02)
+
+    def test_equal_seeds_give_the_width_of_independent_claims(self):
+        def width(x):
+            ci = cc.bootstrap_u(x, {"a": [[0] * 10] * 3})
+            return ci[1] - ci[0]
+        self.assertAlmostEqual(width({"a": [[1] * 10 + [0] * 10] * 3}), width({"a": [[1] * 30 + [0] * 30]}), delta=0.04)
+
+    def test_seeds_that_differ_widen_the_interval(self):
+        none = {"a": [[0] * 20] * 3}
+        same = cc.bootstrap_u({"a": [[1] * 10 + [0] * 10] * 3}, none)
+        differ = cc.bootstrap_u({"a": [[1] * 20, [1] * 10 + [0] * 10, [0] * 20]}, none)      # 50% overall in both
+        self.assertGreater(differ[1] - differ[0], 2 * (same[1] - same[0]))
+        self.assertEqual(differ, (0.0, 1.0))                       # the same seed can be drawn three times
+
+    def test_clusters_stay_in_their_section(self):
+        x = {"a": [[1, 1]] * 3, "b": [[0, 0]] * 3}                                           # no variation inside a section
+        self.assertEqual(cc.bootstrap_u(x, {"a": [[0, 0]] * 3}), (0.5, 0.5))
+
+    def test_two_stages(self):
+        x = {"a": [[1, 0]] * 3}                                                              # equal clusters: the claims vary
+        self.assertNotEqual(*cc.bootstrap_u(x, {"a": [[0, 0]] * 3}))
+
+    def test_a_failed_section_is_an_empty_cluster(self):
+        runs = {42: {"claims": [("a", "unsupported"), ("b", "weak")]}, 43: {"claims": [("a", "weak")]}}
+        x = cc.clustered_claims(runs)
+        self.assertEqual(x, {"a": [[1], [0]], "b": [[0], []]})
+        self.assertEqual(cc.clustered_claims(runs, {"b"}), {"b": [[0], []]})
+        ci = cc.bootstrap_u({"b": [[0], []]}, {"b": [[0], [0]]})                             # empty draws are left out
+        self.assertEqual(ci, (0.0, 0.0))
 
     def test_statements_are_paired(self):
         x = {"a": [(1.0, 1, 0, 0, 0), (0.0, 1, 0, 0, 0)] * 10}

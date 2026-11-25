@@ -54,7 +54,7 @@ report, which is confidential.
 | Prompts and sampling | prompt version v2, temperature 0.2, seed 42 (smoke test: seeds 42–44) |
 | Case | `euterpepark-oss`: InnoBeweegLab's real Wijkscan data for Oss, re-imported on 3 Nov with the current code; maps measured in code |
 | Conditions | E0 template (no model), E1 single prompt per section, E2 staged (findings per perspective, then synthesis), E2 on CPU only |
-| Scoring | against the original report: 250 statements; recommendations excluded by design |
+| Scoring | against the original report: 250 statements; recommendations excluded by design. The pilot figures in this document include Aanleiding; counted runs leave it out (239 statements, ceiling 53.6%) |
 | Start state | every model run starts cold: Ollama unloads all models first, so load time and memory are the run's own |
 | Measurement | memory of the Ollama processes sampled every second (`llm/resources.py`); the model server's own timings; code version and fingerprints in every run record |
 
@@ -240,7 +240,7 @@ plan is what found it.
 2. Run V1: E2 with seeds 43 and 44 on the GPU and on the CPU only.
 3. Build E4 (checker step) and E1R (raw records); decide whether E4 only flags or revises once.
 4. Second rater labels the 89 statements for the scorer check.
-5. Freeze with git tag `freeze-1`, then start stage 1.
+5. Freeze with git tag `freeze-2`, then start stage 1.
 
 # Version history
 

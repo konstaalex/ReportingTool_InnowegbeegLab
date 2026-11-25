@@ -1,7 +1,7 @@
 # E4 and E1R: design decisions before the freeze
 
 **Status: all recommendations accepted by Alex on 19 November 2026.** They go into
-`hypotheses-and-thresholds.md` and its deviation log at the freeze (`freeze-1`).
+`hypotheses-and-thresholds.md` and its deviation log at the freeze (`freeze-2`).
 A copy of this record also exists as a claude.ai doc; this file is the one that is frozen.
 
 Twelve decisions had to be fixed before E4 and E1R are built. The most important one is D4:

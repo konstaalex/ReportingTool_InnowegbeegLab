@@ -2,7 +2,7 @@
 
 Read this first. It is the hand-over from the claude.ai project "Innoweegbeg" (planning,
 research and documents) to Claude Code on Alex's laptop (running things). Last updated
-25 November 2026 (freeze). When something here changes, update this file in the same commit.
+25 November 2026 (freeze-2). When something here changes, update this file in the same commit.
 
 ## 1. The project in five lines
 
@@ -47,7 +47,7 @@ All research data lives OUTSIDE the repo, under
 | Folder | What | Notes |
 |---|---|---|
 | `Perspectieven Oss\` | The real Euterpepark Oss case: report PDF, resident xlsx, 10 QGIS maps + 2 demografie jpegs, 4 expert xlsx, route PDF, sunburst | **Confidential.** The only case with a human-written report, so the only one S can be scored on |
-| `newDataSender\Textual_Rules_and_more_inspiration\` | 10 **synthetic** Buurtscan cases (file names say SYNTHETISCH), plus Schrijfwijzer and "Ten textual rules" | 10 `[n]` duplicates; the ingester skips them by checksum. No reference reports, so they give U, time and memory, not S |
+| `newDataSender\Textual_Rules_and_more_inspiration\` | 10 **synthetic** Buurtscan cases (file names say SYNTHETISCH), plus Schrijfwijzer and "Ten textual rules" | 10 `[n]` duplicates; the ingester skips them by checksum. No reference reports, so they give U, time, memory and failed sections, not S. They join the counted runs after 3 December |
 | `gold\oss_demografie_readings.toml` | Hand-checked values of the two demografie images, for `imaging.cli eval-reading` | **Draft** recreated 17 Nov (149 values). Alex must verify it and fill `verified_by`/`verified_on` before it counts |
 
 Rules, never broken:
@@ -58,7 +58,8 @@ Rules, never broken:
   reference only; the ingester excludes it from the drafting inputs
   (`excluded_reference_report`). Report numbers only.
 - **No hosted model sees the data.** The privacy guard refuses resident free text to hosted
-  providers and the hosted judge is refused by a test. E6 (Azure EU) runs only if
+  providers and the hosted judge is refused by a test. Only logged exception: C0 (Copilot by
+  hand, with InnoBeweegLab's written OK). E6 (Azure EU) runs only if
   InnoBeweegLab gives a tenant and a DPA.
 - Tests use synthetic fixtures only.
 
@@ -104,7 +105,8 @@ record of what was fixed when). Short version:
 **Measures.** **U** = unsupported-claim rate (claims with no valid citation or with a number
 not in the cited evidence; lower is better), from `checks.py`. **S** = coverage of what the
 data supports, against the original report (higher is better), from `reports/evaluate.py`.
-Ceiling = share of the original's 250 statements the data can support at all (52% for Oss).
+Ceiling = share of the original's statements the data can support at all: 128 of 239 (53.6%) for Oss,
+without Aanleiding. Pilot results below still have the old basis (131 of 250, 52%).
 Secondary: number conflicts, numbers found back, grounded/weak rates, time, peak model memory,
 failed sections.
 
@@ -117,9 +119,11 @@ doc §4b).
 **Hypotheses.** H1 evidence layer (E1 vs E1R) · H2 staging (E2 vs E1) · H3 checker (E4 vs E2)
 · H4 retrieval · H5 models (exploratory) · H6–H8 user sessions · H9 tool vs Copilot.
 Feasibility: F1 peak memory ≤ 9.6 GB · F2 full report ≤ 8 h on CPU · F3 no failed sections
-in 3 runs · F4 €0 · F5 one run on a borrowed office laptop.
+in 3 runs · F4 €0 · F5 one complete report (stage-1 winner, seed 42) on the
+InnoBeweegLab laptop (HP ProBook, Core 5 120U, 16 GB), no failed sections, peak ≤ 9.6 GiB.
 
-**Judging a difference.** Pooled over seeds 42, 43, 44; 95% bootstrap CI (2,000 resamples);
+**Judging a difference.** Pooled over seeds 42, 43, 44; 95% bootstrap CI (2,000 resamples;
+U by (seed x section) clusters, S by paired statements);
 minimum meaningful difference (MMD) 5 percentage points. Better/worse = CI excludes 0 and the
 difference ≥ MMD; no meaningful difference = whole CI within ± MMD; else inconclusive.
 S is trusted only if a scorer reaches κ ≥ 0.61 against two raters' agreed labels (word overlap
@@ -130,7 +134,7 @@ winner → stage 3 models on that winner. Rule: highest S among candidates whose
 MMD of the best U; ties → the faster one. If a full report takes more than ~3 hours, stages 2
 and 3 use 3 of the 6 themes (already fixed; choose which three before stage 2).
 
-**What counts.** Only untagged runs after the git tag `freeze-1`, with `code_version` equal to
+**What counts.** Only untagged runs after the git tag `freeze-2`, with `code_version` equal to
 that commit (no `-dirty`). Tagged runs (`pilot-week1`, `pilot-windows`, …) never count. A
 failed section is kept and scored as missing. A run is repeated only for an infrastructure
 fault (crash, power loss, sleep), logged in the deviation log — never because the output was
@@ -173,7 +177,8 @@ E1R (raw-records baseline) = E1 with the evidence layer removed:
 
 Also accepted: the five (P) values as written (MMD 5 pp, 2,000 resamples, κ ≥ 0.61, F2 8 h,
 30 sampled statements for C0); all counted runs CPU-only on this laptop; check V1 (GPU vs CPU)
-dropped. Stage 2 compares all, top-25 and BM25; vector and hybrid are dropped (25 Nov).
+dropped. Stage 2 compares all, top-25 and BM25; vector and hybrid are dropped (25 Nov),
+except one exploratory hybrid run that never counts.
 
 Deviation-log entries to add at the freeze are listed in the decisions doc.
 
@@ -201,18 +206,20 @@ Done:
   (U 10.7% before and 6.1% after revision, S 23.3%, 42 min extra for 4 revision calls, peak
   8.3 GiB); E1R 97.7 min (six themes, U 38.1%, peak 7.8 GiB). E1R prompts 7,157-12,615 tokens: all fit
   in 16K. E1R's number conflicts and numbers found back were not looked at before the freeze.
-- Aanleiding is not drafted: it needs "Projectcontext" researcher notes (`Onderzoekersnotities.xlsx`),
-  which are missing. A report has 8 sections (E1R: 6).
+- Aanleiding is out of scope for all counted runs: researcher-written, no condition gets researcher
+  notes, not scored. A report has 8 sections (E1R: 6).
+- `freeze-1` (`d56ac62`) was superseded by `freeze-2` before any counted run.
+- The 10 synthetic cases ingest cleanly (checked 25 Nov).
 
 Plan to 3 December (stop at every GATE and ask Alex):
 
 1. Wed 25 (planned Thu 26): freeze. `hypotheses-and-thresholds.md` and its deviation log updated. GATE, then commit,
-   tag `freeze-1`, push the tag.
-2. Thu 26 night - Sun 29: stage 1 counted runs, untagged, `--cold --cpu-only`: E1, E2, E4, E1R on Oss;
+   tag, push the tag. Done: `freeze-2`.
+2. Wed 25 night - Sun 29: stage 1 counted runs, untagged, `--cold --cpu-only`: E1, E2, E4, E1R on Oss;
    seed 42 for all four, then 43, then 44 (12 reports, about 7 h per seed). After each report one line
    in `workspace\stage1-progress.md`. **No commit on the checkout that runs until all 12 are done**
    (a new commit changes `code_version`). Then
-   `python scripts/compare_conditions.py --workspace workspace --freeze freeze-1 --out workspace/stage1-results.md`.
+   `python scripts/compare_conditions.py --workspace workspace --freeze freeze-2 --out workspace/stage1-results.md`.
    GATE: results and the winner by the pre-registered rule.
 3. Mon 30 - Tue 1 Dec: offline package in `%USERPROFILE%\Desktop\InnoBeweegLab_offline\` (Python 3.11
    installer, wheels, Ollama installer, model files, git archive of the freeze commit,
@@ -220,19 +227,18 @@ Plan to 3 December (stop at every GATE and ask Alex):
    command once (stage-1 winner, seed 42). GATE.
 4. 3 Dec: stakeholder laptop (specs, written agreement that data stays local and pseudonymised, F5).
 
-After 3 December: build BM25 and freeze again for stage 2 (all, top-25, BM25; six themes) and stage 3
+After 3 December: E2 and E4, seed 42, on the 10 synthetic cases (20 reports, at Oss speed about 37 h), in
+their own workspace `workspace\synthetic`, from the freeze-2 commit; build BM25 and freeze again for stage 2 (all, top-25, BM25; six themes) and stage 3
 (models); F1-F3 runs of the final configuration; Copilot C0; one labelling session with the second
 rater (89 statements, 50 verifier verdicts, blind E2/E4 support check); user sessions with 4-5
 InnoBeweegLab researchers, 7-18 Dec (rubric, SUS, NASA-TLX, interview guide, consent forms, editing
 time). Analysis in January.
 
-Open decisions: the remaining (P) values (H7, H8, H9, F3); build the unknown-mapping screen or scope
-it out; E6 (Azure EU) or drop it; whether the 10 synthetic cases join the counted runs (they can give
-U, time, memory, not S).
+Open decisions: the remaining (P) values (H7 rubric, H9, F3); build the unknown-mapping screen or scope it out; E6 (Azure EU) or drop it.
 
 ## 8. How to work in this repo
 
-- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (189 tests).
+- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (194 tests).
 - Commit code, prompts and config **before** starting a run, so its record is not `-dirty`.
 - Long runs: laptop on power, power mode "Best performance", sleep off. **At least 9 GB free
   memory at the start**: close VS Code, browsers, Teams, Outlook (the script warns below 9 GB).

@@ -1,6 +1,6 @@
 """Stage 1 comparison of the counted runs, by the rules of hypotheses-and-thresholds.md (sections 3 and 4).
 
-    python scripts/compare_conditions.py --workspace workspace --freeze freeze-1 --out workspace/stage1-results.md
+    python scripts/compare_conditions.py --workspace workspace --freeze freeze-2 --out workspace/stage1-results.md
 
 Reads only stored records: the verifier status of every claim (U) and the labels and numbers of every
 statement of the original (S, number measures). Runs no model and changes no run record. Writes
@@ -31,6 +31,7 @@ CANDIDATES = ("E1", "E2", "E4")                # E1R is a reference, never a can
 CONDITIONS = (*CANDIDATES, "E1R")
 SEEDS = (42, 43, 44)
 CREDIT = {"covered": 1.0, "partial": 0.5, "missing": 0.0}
+NOT_SCORED = ("aanbevelingen", "aanleiding")   # written by the researcher, no condition drafts them
 EPS = 1e-9                                     # a difference of exactly 5 points counts as 5 points
 
 
@@ -95,7 +96,7 @@ def read_report(workspace: Path, case: str, rec: dict, res: dict) -> dict:
     n: dict = defaultdict(int)
     with open(d / "evaluation" / "alignment.csv", newline="", encoding="utf-8") as fh:
         for row in csv.DictReader(fh):
-            if row["section"] == "aanbevelingen":                      # excluded by design
+            if row["section"] in NOT_SCORED:
                 continue
             ref, gen = set(row["numbers_reference"].split()), set(row["numbers_generated"].split())
             statements.append({"section": row["section"], "index": n[row["section"]],
@@ -118,6 +119,12 @@ def pooled_claims(runs: dict, sections=None) -> dict[str, list[int]]:
             if sections is None or sec in sections:
                 out[sec].append(int(status == "unsupported"))
     return dict(out)
+
+
+def clustered_claims(runs: dict, sections=None) -> dict[str, list[list[int]]]:
+    """The same claims per section, one cluster per seed. A section that a seed did not draft is an empty cluster."""
+    per_seed = [pooled_claims({k: r}, sections) for k, r in runs.items()]
+    return {sec: [p.get(sec, []) for p in per_seed] for sec in sorted(set().union(*per_seed))}
 
 
 def rate(strata: dict) -> float | None:
@@ -152,6 +159,11 @@ def found_rate(strata: dict) -> float | None:
     return ratio(strata, 2, 3)
 
 
+def ceiling(run: dict) -> tuple[int, int]:
+    """Statements of the original that the data can support, and all scored statements."""
+    return sum(s["supportable"] for s in run["statements"]), len(run["statements"])
+
+
 def conflicts(strata: dict) -> int:
     return sum(r[4] for v in strata.values() for r in v)
 
@@ -164,12 +176,19 @@ def interval(values: list[float]) -> tuple[float, float]:
 
 
 def bootstrap_u(x: dict, y: dict, n: int = RESAMPLES, seed: int = BOOTSTRAP_SEED) -> tuple[float, float]:
-    """Claims are resampled within each section, separately per condition (they are different claims)."""
+    """Two-stage cluster bootstrap (Field & Welsh 2007) on clustered_claims. Within each section the (seed x section)
+    clusters are drawn with replacement, then the claims within each drawn cluster; separately per condition."""
     rng = random.Random(seed)
 
     def draw(strata):
-        return {k: rng.choices(v, k=len(v)) for k, v in sorted(strata.items())}
-    return interval([rate(draw(x)) - rate(draw(y)) for _ in range(n)])
+        return {k: [c for cluster in rng.choices(v, k=len(v)) for c in rng.choices(cluster, k=len(cluster)) if cluster]
+                for k, v in sorted(strata.items())}
+    diffs = []
+    for _ in range(n):
+        a, b = rate(draw(x)), rate(draw(y))
+        if a is not None and b is not None:
+            diffs.append(a - b)
+    return interval(diffs)
 
 
 def bootstrap_statements(x: dict, y: dict, measure, n: int = RESAMPLES,
@@ -211,10 +230,11 @@ def stage1_winner(scores_by: dict) -> dict:
 def compare(x: dict, y: dict, sections=None) -> dict:
     """X minus Y, pooled over the seeds."""
     ux, uy = pooled_claims(x, sections), pooled_claims(y, sections)
+    cx, cy = clustered_claims(x, sections), clustered_claims(y, sections)
     sx, sy = pooled_statements(x, sections), pooled_statements(y, sections)
     out: dict = {"conflicts": {"x": conflicts(sx), "y": conflicts(sy)}}
     for name, a, b, ci, low in (
-            ("U", rate(ux), rate(uy), lambda: bootstrap_u(ux, uy), True),
+            ("U", rate(ux), rate(uy), lambda: bootstrap_u(cx, cy), True),
             ("S", s_rate(sx), s_rate(sy), lambda: bootstrap_statements(sx, sy, s_rate), False),
             ("found back", found_rate(sx), found_rate(sy), lambda: bootstrap_statements(sx, sy, found_rate), False)):
         if a is not None and b is not None:
@@ -245,7 +265,8 @@ def scores(runs: dict, sections=None) -> dict:
 def render(data: dict, title: str) -> str:
     out = [f"# {title}", "",
            "Numbers only. Rules: docs/experiments/hypotheses-and-thresholds.md, sections 3 and 4. "
-           f"Bootstrap: {RESAMPLES} resamples, seed {BOOTSTRAP_SEED}. MMD: 5 percentage points (pp).", "",
+           f"Bootstrap: {RESAMPLES} resamples, seed {BOOTSTRAP_SEED}; U by (seed x section) clusters, S by paired "
+           "statements. MMD: 5 percentage points (pp). Aanleiding and Aanbevelingen are not scored.", "",
            "## Runs", "",
            "| Condition | Seed | Run | Claims | U % | S % | Minutes | Peak model memory (GiB) | Failed sections |",
            "|---|---|---|---|---|---|---|---|---|"]
@@ -255,7 +276,9 @@ def render(data: dict, title: str) -> str:
             out.append(f"| {c} | {seed} | {r['run_id']} | {len(r['claims'])} | {_pc(s['U'])} | {_pc(s['S'])} | "
                        f"{s['minutes']:.1f} | {'–' if mem is None else round(mem / 1024, 1)} | "
                        f"{len(r['failed_sections'])} |")
-    out += ["", "E1R has the six theme sections only: its S in these two tables is against the whole original and is "
+    can, n = ceiling(next(iter(next(iter(data.values())).values())))
+    out += ["", f"Ceiling: {can} of {n} statements ({_pc(_share(can, n))}%).", "",
+            "E1R has the six theme sections only: its S in these two tables is against the whole original and is "
             "not comparable with the others.", "", "## Pooled over the seeds", "",
             "| Condition | Claims | U % | Weak % | Grounded % | S % | Numbers found back | Number conflicts | "
             "Minutes (mean) |", "|---|---|---|---|---|---|---|---|---|"]
