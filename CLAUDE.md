@@ -210,6 +210,7 @@ Done:
   notes, not scored. A report has 8 sections (E1R: 6).
 - `freeze-1` (`d56ac62`) was superseded by `freeze-2` before any counted run.
 - The 10 synthetic cases ingest cleanly (checked 25 Nov).
+- Stage 1 done, 25-26 Nov (12 reports from `44def27`, no infrastructure faults): winner **E2** by the rule (accepted 26 Nov). Pooled U / S: E1 19.0 / 20.8%, E2 10.2 / 24.3%, E4 5.9 / 24.0%, E1R 34.6% (six themes); 0 number conflicts everywhere. H1, H2 not supported; H3 automatic part not met. Numbers in `docs/experiments/stage1-results.md`.
 
 Plan to 3 December (stop at every GATE and ask Alex):
 
@@ -238,7 +239,7 @@ Open decisions: the remaining (P) values (H7 rubric, H9, F3); build the unknown-
 
 ## 8. How to work in this repo
 
-- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (194 tests).
+- Run tests before every commit: `.\.venv\Scripts\python.exe -m pytest -q` (197 tests).
 - Commit code, prompts and config **before** starting a run, so its record is not `-dirty`.
 - Long runs: laptop on power, power mode "Best performance", sleep off. **At least 9 GB free
   memory at the start**: close VS Code, browsers, Teams, Outlook (the script warns below 9 GB).
