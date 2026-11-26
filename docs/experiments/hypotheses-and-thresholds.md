@@ -336,6 +336,8 @@ why.
 | 2026-11-25 | Showroom = the product owner's expert session plus C0 | It was the three reference points of the framework document |
 | 2026-11-25 | Smallest detectable difference in U (about 10 points) stated in section 3 | The cluster bootstrap gives wider intervals than expected; stated before any counted run |
 | 2026-11-25 | freeze-1 (d56ac62) superseded before any counted run; counted runs come from `freeze-2` | Reasons: cluster bootstrap, Aanleiding out of scope, literature basis, F5 rule, raters, C0 exception, Showroom |
+| 2026-11-26 | The synthetic-case runs (E2 and E4, seed 42, 10 cases) start before 3 December, in night batches only (no report starts after 05:00), from the `freeze-2` commit | The laptop is free at night and used during the day; the runs are descriptive and do not change any stage-1 result |
+| 2026-11-26 | Number-conflict detector checked after stage 1 with a synthetic test: it counts a planted different number, but only when the matched sentence shares no number with the original statement; 3-4 matched statements per condition share some numbers and differ in others, and these are not counted | Detector unchanged (pre-registered); stated as a limitation for H1 |
 
 ## Sources
 

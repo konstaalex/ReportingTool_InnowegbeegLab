@@ -171,5 +171,32 @@ class TestRules(unittest.TestCase):
         self.assertEqual(win(E1=(0.10, 0.28, 70), E2=(0.10, 0.30, 90), E4=(0.09, 0.31, 130)), "E1")
 
 
+class TestConflictDetector(unittest.TestCase):
+    """End to end: evaluate() writes alignment.csv, compare_conditions counts the conflicts (synthetic text)."""
+    REF = "De experts geven de sportplekken in de buurt gemiddeld een {} als cijfer."
+
+    def count(self, ref_numbers, draft_numbers) -> int:
+        from reports.evaluate import evaluate, write_outputs
+        ws = Path(tempfile.mkdtemp())
+        write_run(ws, "E2", 42)
+        ref = {"sections": {"Sporten": self.REF.format(ref_numbers)}}
+        draft = self.REF.format(draft_numbers)
+        res = evaluate(ref, {"Sporten": [draft]}, [draft])
+        self.assertNotEqual(res["rows"][0]["label"], "missing")          # the statement is matched
+        write_outputs(res, ws / "reports" / CASE / "E2-42" / "evaluation", "test")
+        runs = cc.load_runs(ws, CASE, ("E2",), (42,), COMMIT, None)["E2"]
+        return cc.conflicts(cc.pooled_statements(runs))
+
+    def test_a_planted_different_number_is_one_conflict(self):
+        self.assertEqual(self.count("6", "8"), 1)
+
+    def test_the_same_number_is_no_conflict(self):
+        self.assertEqual(self.count("6", "6"), 0)
+
+    def test_one_shared_number_hides_a_changed_one(self):
+        # a limitation, stated in the results: the detector fires only when no number is shared
+        self.assertEqual(self.count("6 of 7", "6 of 9"), 0)
+
+
 if __name__ == "__main__":
     unittest.main()
