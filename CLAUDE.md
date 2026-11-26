@@ -34,6 +34,12 @@ research and documents) to Claude Code on Alex's laptop (running things). Last u
   `PYTHONUTF8=1` (Dutch file names) before running modules.
 - **Setup scripts:** `scripts/setup_windows.ps1` (installs everything, idempotent) and
   `scripts/windows_timing.ps1` (the speed test, see §7). The `.sh` scripts are macOS only.
+- Offline package for the InnoBeweegLab laptop: `scripts/install_offline.ps1` (installs from
+  `%USERPROFILE%\Desktop\InnoBeweegLab_offline\`, checks out freeze-2 from a git bundle with
+  `core.autocrlf=true` so the fingerprints match), `scripts/run_f5.ps1` (F5: E2, seed 42),
+  `scripts/start_app.bat` / `stop_app.bat` (review screen on 127.0.0.1 only, Streamlit usage
+  statistics off), `docs/DEMO.md`. Later counted or descriptive runs on this laptop come from the
+  detached checkout `.claude\worktrees\freeze-2-run` (44def27), because docs commits move HEAD.
 - `.vscode/settings.json` still points at the Mac venv (`.venv/bin/python`) and only sets
   terminal env vars for macOS: fix it for Windows (`.venv/Scripts/python.exe` and a
   `terminal.integrated.env.windows` block with `PYTHONPATH`, `PYTHONUTF8`, `DATA`, `OSS`, `GOLD`).
