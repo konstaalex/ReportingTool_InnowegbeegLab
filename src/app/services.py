@@ -318,6 +318,11 @@ class Workspace:
                 files["pdf"] = pdf_path
         return files
 
+    def trace_check(self, case_id: str, files: dict, required_sections: Optional[list[str]] = None) -> dict:
+        """Every claim of the exported Word report traces to evidence items and source records."""
+        from app.trace import check_export
+        return check_export(files, self.evidence_index(case_id), self.store(), required_sections)
+
     # ------------------------------------------------------------ full reports per model (SQ3)
     def selected_models(self) -> list[str]:
         from llm.registry import selected_models
