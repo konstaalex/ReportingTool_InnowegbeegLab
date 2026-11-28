@@ -171,6 +171,25 @@ class TestRules(unittest.TestCase):
         self.assertEqual(win(E1=(0.10, 0.28, 70), E2=(0.10, 0.30, 90), E4=(0.09, 0.31, 130)), "E1")
 
 
+class TestExploratoryConflicts(unittest.TestCase):
+    def test_partial_conflicts_are_counted_apart(self):
+        ws = Path(tempfile.mkdtemp())
+        labels = [["Sporten", "covered", "covered", "3 5", "3 6", "False"],     # shares 3, differs 5/6: extra
+                  ["Sporten", "partial", "covered", "3 5", "3", "False"],       # only leaves a number out: none
+                  ["Sporten", "missing", "covered", "3 5", "3 6", "False"],     # not matched: none
+                  ["Sporten", "covered", "covered", "7", "8", "True"]]          # pre-registered conflict
+        write_run(ws, "E1", 42, labels=labels)
+        write_run(ws, "E1R", 42, labels=labels)
+        write_run(ws, "E2", 42, labels=labels)
+        data = cc.load_runs(ws, CASE, ("E1", "E1R", "E2"), (42,), COMMIT, None)
+        self.assertEqual(cc.strict_conflicts(data["E1"]), (1, 1))
+        md = cc.render_exploratory(data, "t")
+        self.assertIn("exploratory, not pre-registered", md)
+        self.assertIn("| E1 vs E1R | six themes | E1 | 1 | 1 | 2 |", md)
+        self.assertIn("| E2 vs E1 | all | E2 | 1 | 1 | 2 |", md)
+        self.assertEqual(cc.render(data, "t"), cc.render(data, "t"))           # the main report is untouched
+
+
 class TestConflictDetector(unittest.TestCase):
     """End to end: evaluate() writes alignment.csv, compare_conditions counts the conflicts (synthetic text)."""
     REF = "De experts geven de sportplekken in de buurt gemiddeld een {} als cijfer."

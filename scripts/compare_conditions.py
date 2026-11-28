@@ -102,7 +102,10 @@ def read_report(workspace: Path, case: str, rec: dict, res: dict) -> dict:
             statements.append({"section": row["section"], "index": n[row["section"]],
                                "credit": CREDIT[row["label"]], "supportable": row["evidence_label"] != "missing",
                                "in_reference": len(ref), "found_back": len(ref & gen),
-                               "conflict": row["numbers_differ"] == "True"})
+                               "conflict": row["numbers_differ"] == "True",
+                               # exploratory (not pre-registered): matched, shares a number and differs in others
+                               "partial_conflict": row["label"] != "missing" and bool(ref & gen) and bool(ref - gen)
+                               and bool(gen - ref)})
             n[row["section"]] += 1
     return {"run_id": rec["run_id"], "claims": claims, "statements": statements, "totals": res["totals"],
             "failed_sections": res.get("failed_sections") or [], "fingerprints": rec["fingerprints"],
@@ -349,6 +352,31 @@ def render(data: dict, title: str) -> str:
     return "\n".join(out)
 
 
+def strict_conflicts(runs: dict, sections=None) -> tuple[int, int]:
+    """(pre-registered conflicts, extra partial conflicts), summed over the seeds. Exploratory."""
+    rows = [s for r in runs.values() for s in r["statements"] if sections is None or s["section"] in sections]
+    return sum(s["conflict"] for s in rows), sum(s["partial_conflict"] and not s["conflict"] for s in rows)
+
+
+def render_exploratory(data: dict, title: str) -> str:
+    """A stricter number-conflict count. Exploratory, not pre-registered: it changes no verdict."""
+    out = [f"# {title}: stricter number-conflict count (exploratory, not pre-registered)", "",
+           "Pre-registered count: a matched statement whose numbers share none with the original. Stricter count: "
+           "also a matched statement that shares some numbers with the original and differs in others (the draft "
+           "has a number the original lacks, and the original has one the draft lacks). Summed over the seeds. "
+           "The verdicts in the stage 1 results are unchanged.", "",
+           "| Comparison | Sections | Condition | Pre-registered | Extra (partial) | Stricter total |",
+           "|---|---|---|---|---|---|"]
+    for x, y, secs in (("E1", "E1R", set(THEMES)), ("E2", "E1", None)):
+        if x not in data or y not in data:
+            continue
+        for c in (x, y):
+            pre, extra = strict_conflicts(data[c], secs)
+            out.append(f"| {x} vs {y} | {'six themes' if secs else 'all'} | {c} | {pre} | {extra} | {pre + extra} |")
+    out.append("")
+    return "\n".join(out)
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--workspace", default="workspace")
@@ -358,6 +386,7 @@ def main(argv=None) -> int:
     ap.add_argument("--conditions", nargs="+", default=list(CONDITIONS))
     ap.add_argument("--seeds", nargs="+", type=int, default=list(SEEDS))
     ap.add_argument("--out")
+    ap.add_argument("--exploratory-out", help="also write the stricter, exploratory conflict count here")
     a = ap.parse_args(argv)
     if bool(a.freeze) == bool(a.tag):
         ap.error("give --freeze (counted runs) or --tag (a try-out)")
@@ -374,6 +403,9 @@ def main(argv=None) -> int:
     if a.out:
         Path(a.out).write_text(md, encoding="utf-8")
     print(md)
+    if a.exploratory_out:
+        Path(a.exploratory_out).write_text(render_exploratory(data, f"Stage 1, commit {commit}" if commit else
+                                                              f"NOT COUNTED: runs tagged {a.tag}"), encoding="utf-8")
     return 0
 
 
